@@ -59,7 +59,7 @@ row = rec.data.find(x => x.id === creditSale.id); assert.ok(row); assert.equal(N
 await req('/invoices/receivables?status=paid&page=1&pageSize=100', { token:staffToken });
 
 // Void restores stock and is idempotently protected; reports exclude voided transactions.
-const voidSale = await req('/invoices', { token:staffToken, method:'POST', body:{ items:[{ material_id:material.id, description:material.name, quantity:2, unit_price:20 }], payment:{ amount:40, method:'bank' } }, status:201 });
+const voidSale = await req('/invoices', { token:staffToken, method:'POST', body:{ items:[{ material_id:material.id, description:material.name, quantity:2, unit_price:20 }], payment:{ amount:40, method:'gcash' } }, status:201 });
 assert.equal(Number((await req(`/materials/${material.id}`, { token:staffToken })).stock), 26);
 await req(`/invoices/${voidSale.id}/void`, { token:admin, method:'PUT', body:{ reason:`${marker} void test` }, status:200 });
 assert.equal(Number((await req(`/materials/${material.id}`, { token:staffToken })).stock), 28);

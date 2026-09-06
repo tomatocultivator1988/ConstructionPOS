@@ -55,7 +55,7 @@ const GUIDE: Record<string, { title: string; intro: string; sections: HelpSectio
     title: 'Receivables',
     intro: 'Manage credit sales and see exactly who still has an unpaid balance.',
     sections: [
-      { title: 'Credit sales', body: 'Cash, card, bank, and check sales may remain Walk-in. A Credit / On Account sale requires a <strong>Charge To / Buyer Name</strong>; no customer account or due date is required.' },
+      { title: 'Credit sales', body: 'Cash, card, bank, GCash, and check sales may remain Walk-in. A Credit / On Account sale requires a <strong>Charge To / Buyer Name</strong>; no customer account or due date is required.' },
       { title: 'Collect payment', body: 'Use Search or the status filter to find unpaid or partially paid sales. Tap <strong>Record Payment</strong>, enter the payment amount and method, then confirm. The balance updates from the invoice payment history.' },
     ],
   },

@@ -8,7 +8,7 @@ let EXPENSE_CATEGORIES = [
   'Rent', 'Utilities', 'Labor/Salary', 'Delivery/Transport',
   'Tools & Equipment', 'Maintenance', 'Supplies', 'Other'
 ];
-const PAYMENT_METHODS = ['cash', 'bank', 'card', 'check', 'credit'];
+const PAYMENT_METHODS = ['cash', 'bank', 'card', 'gcash', 'check', 'credit'];
 
 function catOptions(selected?: string) {
   return EXPENSE_CATEGORIES.map(c => `<option value="${esc(c)}"${c === selected ? ' selected' : ''}>${esc(c)}</option>`).join('');

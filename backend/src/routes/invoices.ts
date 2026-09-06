@@ -7,9 +7,9 @@ import { clearCache } from '../lib/cache';
 
 const router = Router();
 router.use(requireAdminOrPOS);
-const PAYMENT_METHODS = ['cash', 'card', 'bank', 'check', 'credit'];
-const SETTLEMENT_METHODS = ['cash', 'card', 'bank', 'check'];
-const REFUND_METHODS = ['cash', 'card', 'bank', 'check'];
+const PAYMENT_METHODS = ['cash', 'card', 'bank', 'gcash', 'check', 'credit'];
+const SETTLEMENT_METHODS = ['cash', 'card', 'bank', 'gcash', 'check'];
+const REFUND_METHODS = ['cash', 'card', 'bank', 'gcash', 'check'];
 
 async function refreshInvoiceStatus(db: ReturnType<typeof getDb>, invoiceId: string) {
   const invoice = await db.prepare('SELECT total, status FROM invoices WHERE id=?').get(invoiceId) as any;

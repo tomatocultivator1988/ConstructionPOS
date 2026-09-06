@@ -11,7 +11,7 @@ const EXPENSE_CATEGORIES = [
   'Rent', 'Utilities', 'Labor/Salary', 'Delivery/Transport',
   'Tools & Equipment', 'Maintenance', 'Supplies', 'Other'
 ];
-const PAYMENT_METHODS = ['cash', 'bank', 'card', 'check', 'credit'];
+const PAYMENT_METHODS = ['cash', 'bank', 'card', 'gcash', 'check', 'credit'];
 
 function validateExpense(body: any, existing?: any) {
   const errors: string[] = [];
