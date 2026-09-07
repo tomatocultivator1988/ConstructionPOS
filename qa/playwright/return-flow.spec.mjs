@@ -6,6 +6,33 @@ const marker = `QA-RETURN-${Date.now()}`;
 const staffUser = 'qa-return-e2e-cashier';
 const initialStaffPin = '1357';
 const staffPin = '2468';
+let stepNumber = 0;
+
+async function showStep(page, title, detail) {
+  stepNumber += 1;
+  await page.evaluate(({ number, title, detail }) => {
+    let caption = document.getElementById('qa-video-caption');
+    if (!caption) {
+      caption = document.createElement('div');
+      caption.id = 'qa-video-caption';
+      caption.innerHTML = '<div class="qa-video-caption-step"></div><div class="qa-video-caption-title"></div><div class="qa-video-caption-detail"></div>';
+      Object.assign(caption.style, {
+        position: 'fixed', top: '18px', left: '50%', transform: 'translateX(-50%)', zIndex: '2147483647',
+        width: 'min(760px, calc(100vw - 48px))', padding: '14px 20px', borderRadius: '12px',
+        background: 'rgba(4, 18, 35, .96)', color: '#fff', border: '2px solid #f7931e',
+        boxShadow: '0 8px 30px rgba(0,0,0,.35)', fontFamily: 'Arial, sans-serif', textAlign: 'center',
+      });
+      document.body.appendChild(caption);
+    }
+    caption.querySelector('.qa-video-caption-step').textContent = `STEP ${number}`;
+    caption.querySelector('.qa-video-caption-title').textContent = title;
+    caption.querySelector('.qa-video-caption-detail').textContent = detail;
+    caption.querySelector('.qa-video-caption-step').style.cssText = 'color:#f7931e;font-size:12px;font-weight:800;letter-spacing:1.5px';
+    caption.querySelector('.qa-video-caption-title').style.cssText = 'font-size:20px;font-weight:800;margin-top:3px';
+    caption.querySelector('.qa-video-caption-detail').style.cssText = 'color:#c6d5e6;font-size:14px;margin-top:4px';
+  }, { number: stepNumber, title, detail });
+  await page.waitForTimeout(1800);
+}
 
 test.beforeEach(async ({ page }) => {
   const browserUrl = process.env.QA_BROWSER_URL || 'https://buildpro-pos.vercel.app';
@@ -25,6 +52,7 @@ async function login(page, username, pin) {
   await expect(page.locator('#login-btn')).toBeHidden();
   await expect(page.locator('#header-user')).toBeVisible();
   await expect(page.locator('[data-view="invoices"]').first()).toBeVisible();
+  await page.waitForTimeout(1200);
 }
 
 async function logout(page) {
@@ -68,13 +96,17 @@ test('staff sale -> admin return -> updated receipt, recorded as a video', async
   expect(materialResponse.status()).toBe(201);
   const material = await materialResponse.json();
 
+  await showStep(page, 'Admin signs in', 'Log in as Administrator to prepare the cashier account.');
   await login(page, adminUser, adminPin);
 
   // Admin creates the staff account and sets the PIN in the real Settings UI.
+  await showStep(page, 'Open Staff settings', 'Go to Settings, then open the Staff management tab.');
   await page.evaluate(() => window.loadView('settings'));
   await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Staff', exact: true }).click();
+  await page.waitForTimeout(1200);
   if (!existingStaff) {
+    await showStep(page, 'Create the cashier account', 'Create the reusable QA cashier account with a temporary PIN.');
     await page.getByRole('button', { name: '+ Add Staff', exact: true }).click();
     await page.locator('#uf-user').fill(staffUser);
     await page.locator('#uf-pin').fill(initialStaffPin);
@@ -84,6 +116,7 @@ test('staff sale -> admin return -> updated receipt, recorded as a video', async
   await expect(page.getByText(staffUser, { exact: true })).toBeVisible();
 
   // Admin changes the newly created staff PIN before opening the shift.
+  await showStep(page, 'Set the cashier PIN', 'Edit the cashier account and save the working PIN.');
   const staffRow = page.locator('tbody tr').filter({ hasText: staffUser });
   await staffRow.getByRole('button', { name: 'Edit', exact: true }).click();
   await page.locator('#uf-pin').fill(staffPin);
@@ -91,6 +124,7 @@ test('staff sale -> admin return -> updated receipt, recorded as a video', async
   await expect(page.getByText(staffUser, { exact: true })).toBeVisible();
 
   // Admin opens the staff shift with opening cash.
+  await showStep(page, 'Open the cashier shift', 'Admin selects the cashier and opens the drawer with ₱100.');
   await page.getByRole('button', { name: 'Cashier Shift', exact: true }).click();
   await page.locator('#shift-staff').selectOption({ label: staffUser });
   await page.locator('#shift-opening').fill('100');
@@ -101,8 +135,10 @@ test('staff sale -> admin return -> updated receipt, recorded as a video', async
   await logout(page);
 
   // Staff logs in and creates a two-unit cash sale.
+  await showStep(page, 'Cashier signs in', 'The staff member can now access the POS because the shift is open.');
   await login(page, staffUser, staffPin);
   await page.evaluate(() => window.loadView('invoices'));
+  await showStep(page, 'Add two products', 'Search for the QA product, add it, and set the quantity to 2.');
   await page.locator('#pos-search').fill(material.name);
   await page.locator('.pos-product').first().click();
   const quantityInput = page.locator('.pos-qty-input').first();
@@ -111,13 +147,16 @@ test('staff sale -> admin return -> updated receipt, recorded as a video', async
   await page.locator('#pos-received').click();
   await page.locator('#pos-received').fill('40');
   await page.locator('#pos-method').selectOption('cash');
+  await showStep(page, 'Complete the cash sale', 'Enter ₱40 received, then click Complete Sale.');
   await page.getByRole('button', { name: 'Complete Sale', exact: true }).click();
   await expect(page.getByText('Receipt Preview', { exact: true })).toBeVisible();
+  await page.waitForTimeout(2200);
   await page.getByRole('button', { name: 'Close', exact: true }).click();
 
   await logout(page);
 
   // Admin returns one unit and inspects the updated receipt.
+  await showStep(page, 'Open the invoice as Admin', 'Admin returns to Sales History and opens the completed sale.');
   await login(page, adminUser, adminPin);
   await page.evaluate(() => window.loadView('invoices'));
   const salesHistory = page.locator('.pos-history');
@@ -126,6 +165,7 @@ test('staff sale -> admin return -> updated receipt, recorded as a video', async
   }
   await salesHistory.locator('button', { hasText: 'View' }).first().click();
   await expect(page.getByText('Return Items', { exact: true })).toBeVisible();
+  await showStep(page, 'Process one returned item', 'Enter quantity 1 and confirm the return. Stock and invoice totals update.');
   const returnInput = page.locator('input[id^="ret-qty-"]').first();
   await returnInput.fill('1');
   await page.getByRole('button', { name: 'Process Returns', exact: true }).click();
@@ -134,6 +174,7 @@ test('staff sale -> admin return -> updated receipt, recorded as a video', async
   await expect(page.getByText('Money not refunded yet.', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: 'Close', exact: true }).click();
 
+  await showStep(page, 'View the updated receipt', 'Open the invoice again to verify Returned 1, Remaining 1, and the receipt adjustment.');
   if (!(await salesHistory.evaluate((element) => element.open))) {
     await salesHistory.locator('summary').click();
   }
