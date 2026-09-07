@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 const adminUser = process.env.QA_ADMIN_USER || 'admin';
 const adminPin = process.env.QA_ADMIN_PIN || '0000';
 const marker = `QA-RETURN-${Date.now()}`;
-const staffUser = marker.toLowerCase();
+const staffUser = 'qa-return-e2e-cashier';
 const initialStaffPin = '1357';
 const staffPin = '2468';
 
@@ -39,8 +39,30 @@ test('staff sale -> admin return -> updated receipt, recorded as a video', async
   const adminLogin = await request.post('/api/auth/login', { data: { username: adminUser, pin: adminPin } });
   expect(adminLogin.ok()).toBeTruthy();
   const adminToken = (await adminLogin.json()).token;
+  const adminHeaders = { Authorization: `Bearer ${adminToken}` };
+
+  // Reuse the same QA staff account between runs. Close only its prior QA shift
+  // so reruns do not create duplicate staff or leave multiple open test shifts.
+  const usersResponse = await request.get('/api/users', { headers: adminHeaders });
+  expect(usersResponse.ok()).toBeTruthy();
+  const users = await usersResponse.json();
+  const existingStaff = users.find((user) => user.username === staffUser);
+  if (existingStaff) {
+    const activeShiftsResponse = await request.get('/api/shifts/active', { headers: adminHeaders });
+    expect(activeShiftsResponse.ok()).toBeTruthy();
+    const activeShifts = await activeShiftsResponse.json();
+    const existingShift = activeShifts.find((shift) => shift.user_id === existingStaff.id);
+    if (existingShift) {
+      const closeResponse = await request.post(`/api/shifts/${existingShift.id}/close`, {
+        headers: { ...adminHeaders, 'Content-Type': 'application/json' },
+        data: { closing_cash: Number(existingShift.expected_cash || existingShift.opening_cash || 0), notes: 'Automated QA cleanup before rerun' },
+      });
+      expect(closeResponse.ok()).toBeTruthy();
+    }
+  }
+
   const materialResponse = await request.post('/api/materials', {
-    headers: { Authorization: `Bearer ${adminToken}` },
+    headers: adminHeaders,
     data: { name: `${marker} Product`, unit: 'Piece', stock: 10, cost_price: 10, price_per_unit: 20, reorder_point: 1, category: 'Other', barcode: `${marker}-BARCODE` },
   });
   expect(materialResponse.status()).toBe(201);
@@ -52,11 +74,13 @@ test('staff sale -> admin return -> updated receipt, recorded as a video', async
   await page.evaluate(() => window.loadView('settings'));
   await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Staff', exact: true }).click();
-  await page.getByRole('button', { name: '+ Add Staff', exact: true }).click();
-  await page.locator('#uf-user').fill(staffUser);
-  await page.locator('#uf-pin').fill(initialStaffPin);
-  await page.locator('#uf-role').selectOption('staff');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  if (!existingStaff) {
+    await page.getByRole('button', { name: '+ Add Staff', exact: true }).click();
+    await page.locator('#uf-user').fill(staffUser);
+    await page.locator('#uf-pin').fill(initialStaffPin);
+    await page.locator('#uf-role').selectOption('staff');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+  }
   await expect(page.getByText(staffUser, { exact: true })).toBeVisible();
 
   // Admin changes the newly created staff PIN before opening the shift.
