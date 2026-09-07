@@ -13,6 +13,13 @@ let posCart: Array<{ material: Material; quantity: number }> = [];
 let posCameraStream: MediaStream | null = null;
 let posCameraFrame = 0;
 
+function getPOSCurrentTotal() {
+  const subtotal = posCart.reduce((sum, item) => sum + item.quantity * Number(item.material.price_per_unit), 0);
+  const taxRate = Number((window as any).__invDefaultTax || 0);
+  const tax = Math.round(subtotal * taxRate * 100) / 100;
+  return Math.round((subtotal + tax) * 100) / 100;
+}
+
 export function enhancePOS() {
   const search = document.getElementById('pos-search') as HTMLInputElement | null;
   if (search) {
@@ -181,10 +188,10 @@ export function addPOSItem(id: string) {
 export function changePOSQty(id: string, delta: number) { const item = posCart.find(i => i.material.id === id); if (!item) return; const next = item.quantity + delta; if (next <= 0) posCart = posCart.filter(i => i.material.id !== id); else if (next <= Number(item.material.stock)) item.quantity = next; else showToast(`Only ${item.material.stock} ${item.material.unit} available`); loadView('invoices'); }
 export function removePOSItem(id: string) { posCart = posCart.filter(i => i.material.id !== id); loadView('invoices'); }
 export function clearPOSCart() { posCart = []; loadView('invoices'); }
-export function updatePOSPayment() { const total = Number((window as any).__posTotal || 0); const received = Number((document.getElementById('pos-received') as HTMLInputElement)?.value || 0); const method = (document.getElementById('pos-method') as HTMLSelectElement)?.value; const fields = document.getElementById('pos-cash-fields'); const warning = document.getElementById('pos-credit-warning'); const required = document.getElementById('pos-name-required'); if (fields) fields.style.display = method === 'credit' ? 'none' : ''; if (warning) warning.style.display = method === 'credit' ? 'block' : 'none'; if (required) required.textContent = method === 'credit' ? '* required for Credit' : '(optional unless Credit)'; const change = method === 'cash' ? Math.max(0, received - total) : 0; const target = document.getElementById('pos-change-value'); if (target) target.textContent = fmtPeso(change); const btn = document.getElementById('pos-complete-btn') as HTMLButtonElement | null; if (btn) btn.disabled = !posCart.length; }
+export function updatePOSPayment() { const total = getPOSCurrentTotal(); const received = Number((document.getElementById('pos-received') as HTMLInputElement)?.value || 0); const method = (document.getElementById('pos-method') as HTMLSelectElement)?.value; const fields = document.getElementById('pos-cash-fields'); const warning = document.getElementById('pos-credit-warning'); const required = document.getElementById('pos-name-required'); if (fields) fields.style.display = method === 'credit' ? 'none' : ''; if (warning) warning.style.display = method === 'credit' ? 'block' : 'none'; if (required) required.textContent = method === 'credit' ? '* required for Credit' : '(optional unless Credit)'; const change = method === 'cash' ? Math.max(0, received - total) : 0; const target = document.getElementById('pos-change-value'); if (target) target.textContent = fmtPeso(change); const btn = document.getElementById('pos-complete-btn') as HTMLButtonElement | null; if (btn) btn.disabled = !posCart.length; }
 export async function completePOSSale() {
   if (!posCart.length) { showToast('Add at least one material'); return; }
-  const total = Number((window as any).__posTotal || 0);
+  const total = getPOSCurrentTotal();
   const method = (document.getElementById('pos-method') as HTMLSelectElement)?.value || 'cash';
   const received = Number((document.getElementById('pos-received') as HTMLInputElement)?.value || 0);
   if (method === 'cash' && received < total) { showToast(`Amount received is short by ${fmtPeso(total - received)}`); return; }

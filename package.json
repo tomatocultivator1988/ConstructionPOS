@@ -1,4 +1,10 @@
 {
+  "scripts": {
+    "qa:playwright:return": "playwright test qa/playwright/return-flow.spec.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  },
   "dependencies": {
     "express-rate-limit": "^8.5.2"
   }
