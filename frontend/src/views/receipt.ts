@@ -71,10 +71,23 @@ function buildThermalShift(shift: any): Uint8Array {
   const safe = (value: any) => String(value ?? '—').replace(/[\r\n]/g, ' ').trim();
   const row = (label: string, value: string) => label.padEnd(Math.max(1, width - value.length)) + value;
   const variance = Number(shift.variance || 0);
+  const methods = shift.payment_methods || {};
+  const refunds = shift.refund_methods || {};
+  const methodRows = [
+    row('Cash', fmtPeso(methods.cash)), row('GCash', fmtPeso(methods.gcash)), row('Card', fmtPeso(methods.card)),
+    row('Bank Transfer', fmtPeso(methods.bank)), row('Check', fmtPeso(methods.check)),
+    row('Total Collections', fmtPeso(shift.total_collections)),
+  ];
+  const refundRows = [
+    row('Cash', fmtPeso(refunds.cash)), row('GCash', fmtPeso(refunds.gcash)), row('Card', fmtPeso(refunds.card)),
+    row('Bank Transfer', fmtPeso(refunds.bank)), row('Check', fmtPeso(refunds.check)),
+  ];
   const content = [
     '\x1b@', '\x1b\x61\x01', 'JEG ENTERPRISES', 'CASHIER SHIFT REPORT', '\x1b\x61\x00', line,
     row('Cashier', safe(shift.username)), row('Opened', safe(shift.opened_at)), row('Closed', safe(shift.closed_at)), line,
     row('Opening Cash', fmtPeso(shift.opening_cash)), row('Cash Sales', fmtPeso(shift.cash_sales)), row('Cash Refunds', fmtPeso(shift.cash_refunds)), row('Drawer Adjustments', fmtPeso(shift.drawer_events)), line,
+    '\x1b\x61\x01', 'PAYMENT METHODS', '\x1b\x61\x00', line, ...methodRows, line,
+    '\x1b\x61\x01', 'REFUNDS BY METHOD', '\x1b\x61\x00', line, ...refundRows, line,
     row('EXPECTED CASH', fmtPeso(shift.expected_cash)), row('COUNTED CASH', fmtPeso(shift.closing_cash)), row(variance >= 0 ? 'OVER' : 'SHORT', fmtPeso(Math.abs(variance))), line,
     `Notes: ${safe(shift.notes)}`, '', 'For internal cashier reconciliation', '\x1b\x64\x04', '\x1d\x56\x00',
   ].join('\n') + '\n';

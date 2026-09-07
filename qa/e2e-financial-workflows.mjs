@@ -65,6 +65,14 @@ await req(`/invoices/${voidSale.id}/void`, { token:admin, method:'PUT', body:{ r
 assert.equal(Number((await req(`/materials/${material.id}`, { token:staffToken })).stock), 28);
 await req(`/invoices/${voidSale.id}/void`, { token:admin, method:'PUT', body:{ reason:'again' }, status:409 });
 
+// Shift report totals are split by actual collection method; voided GCash sales are excluded,
+// and non-cash collections do not inflate the expected physical drawer cash.
+const shiftDetail = await req(`/shifts/${shift.id}`, { token:admin });
+assert.equal(Number(shiftDetail.payment_methods.cash), 30);
+assert.equal(Number(shiftDetail.payment_methods.card), 30);
+assert.equal(Number(shiftDetail.payment_methods.gcash), 0);
+assert.equal(Number(shiftDetail.expected_cash), 125);
+
 // Pending invoice deletion restores inventory and removes the invoice.
 const pending = await req('/invoices', { token:admin, method:'POST', body:{ items:[{ material_id:material.id, description:material.name, quantity:1, unit_price:20 }] }, status:201 });
 assert.equal(Number((await req(`/materials/${material.id}`, { token:admin })).stock), 27);

@@ -6,17 +6,40 @@ import { logAudit } from '../lib/audit';
 
 const router = Router();
 
+const PAYMENT_METHODS = ['cash', 'gcash', 'card', 'bank', 'check'] as const;
+
+/** Derived shift totals. Payment-method totals are collections, while expected_cash
+ * intentionally uses cash only because GCash/card/bank/check do not enter the drawer. */
+async function getShiftMetrics(db: any, shiftId: string) {
+  const [cash, refunds, events, paymentRows, refundRows] = await Promise.all([
+    db.prepare("SELECT COALESCE(SUM(p.amount),0) total FROM payments p JOIN invoices i ON i.id=p.invoice_id WHERE p.shift_id=? AND p.method='cash' AND i.status <> 'voided'").get(shiftId),
+    db.prepare("SELECT COALESCE(SUM(r.amount),0) total FROM refunds r JOIN invoices i ON i.id=r.invoice_id WHERE r.method='cash' AND r.shift_id=? AND i.status <> 'voided'").get(shiftId),
+    db.prepare("SELECT COALESCE(SUM(CASE WHEN type='cash_in' THEN amount ELSE -amount END),0) total FROM cash_drawer_events WHERE shift_id=?").get(shiftId),
+    db.prepare("SELECT p.method, COALESCE(SUM(p.amount),0) total FROM payments p JOIN invoices i ON i.id=p.invoice_id WHERE p.shift_id=? AND i.status <> 'voided' GROUP BY p.method").all(shiftId),
+    db.prepare("SELECT r.method, COALESCE(SUM(r.amount),0) total FROM refunds r JOIN invoices i ON i.id=r.invoice_id WHERE r.shift_id=? AND i.status <> 'voided' GROUP BY r.method").all(shiftId),
+  ]);
+  const paymentMethods: Record<string, number> = Object.fromEntries(PAYMENT_METHODS.map(method => [method, 0]));
+  const refundMethods: Record<string, number> = Object.fromEntries(PAYMENT_METHODS.map(method => [method, 0]));
+  for (const row of paymentRows as any[]) if (row.method in paymentMethods) paymentMethods[row.method] = Number(row.total || 0);
+  for (const row of refundRows as any[]) if (row.method in refundMethods) refundMethods[row.method] = Number(row.total || 0);
+  const cashSales = Number((cash as any).total || 0);
+  const cashRefunds = Number((refunds as any).total || 0);
+  const drawerEvents = Number((events as any).total || 0);
+  const totalCollections = Object.values(paymentMethods).reduce((sum, value) => sum + value, 0);
+  const totalRefunds = Object.values(refundMethods).reduce((sum, value) => sum + value, 0);
+  return { expected_cash_delta: cashSales - cashRefunds + drawerEvents, cash_sales: cashSales, cash_refunds: cashRefunds, drawer_events: drawerEvents, payment_methods: paymentMethods, refund_methods: refundMethods, total_collections: totalCollections, total_refunds: totalRefunds };
+}
+
+async function withShiftMetrics(db: any, shift: any) {
+  const metrics = await getShiftMetrics(db, shift.id);
+  return { ...shift, expected_cash: Number(shift.opening_cash || 0) + metrics.expected_cash_delta, ...metrics };
+}
+
 router.get('/current', async (req: Request, res: Response) => {
   const db = getDb();
   const shift = await db.prepare("SELECT * FROM cashier_shifts WHERE user_id = ? AND status = 'open' ORDER BY opened_at DESC LIMIT 1").get(req.user!.id) as any;
   if (!shift) { res.json(null); return; }
-  const [cash, refunds, events] = await Promise.all([
-    db.prepare("SELECT COALESCE(SUM(p.amount),0) total FROM payments p JOIN invoices i ON i.id=p.invoice_id WHERE p.shift_id=? AND p.method='cash' AND i.status <> 'voided'").get(shift.id),
-    db.prepare("SELECT COALESCE(SUM(r.amount),0) total FROM refunds r JOIN invoices i ON i.id=r.invoice_id WHERE r.method='cash' AND r.shift_id=? AND i.status <> 'voided'").get(shift.id),
-    db.prepare("SELECT COALESCE(SUM(CASE WHEN type='cash_in' THEN amount ELSE -amount END),0) total FROM cash_drawer_events WHERE shift_id=?").get(shift.id),
-  ]);
-  const expected = Number(shift.opening_cash) + Number((cash as any).total || 0) - Number((refunds as any).total || 0) + Number((events as any).total || 0);
-  res.json({ ...shift, expected_cash: expected, cash_sales: Number((cash as any).total || 0), cash_refunds: Number((refunds as any).total || 0), drawer_events: Number((events as any).total || 0) });
+  res.json(await withShiftMetrics(db, shift));
 });
 
 router.get('/history', requireAdmin, async (req: Request, res: Response) => {
@@ -32,13 +55,7 @@ router.get('/active', requireAdmin, async (_req: Request, res: Response) => {
   const shifts = await db.prepare("SELECT s.*, u.username FROM cashier_shifts s LEFT JOIN users u ON u.id=s.user_id WHERE s.status='open' ORDER BY s.opened_at DESC").all() as any[];
   const result = [];
   for (const shift of shifts) {
-    const [cash, refunds, events] = await Promise.all([
-      db.prepare("SELECT COALESCE(SUM(p.amount),0) total FROM payments p JOIN invoices i ON i.id=p.invoice_id WHERE p.shift_id=? AND p.method='cash' AND i.status <> 'voided'").get(shift.id),
-      db.prepare("SELECT COALESCE(SUM(r.amount),0) total FROM refunds r JOIN invoices i ON i.id=r.invoice_id WHERE r.method='cash' AND r.shift_id=? AND i.status <> 'voided'").get(shift.id),
-      db.prepare("SELECT COALESCE(SUM(CASE WHEN type='cash_in' THEN amount ELSE -amount END),0) total FROM cash_drawer_events WHERE shift_id=?").get(shift.id),
-    ]);
-    const expected = Number(shift.opening_cash) + Number((cash as any).total || 0) - Number((refunds as any).total || 0) + Number((events as any).total || 0);
-    result.push({ ...shift, expected_cash: expected, cash_sales: Number((cash as any).total || 0), cash_refunds: Number((refunds as any).total || 0), drawer_events: Number((events as any).total || 0) });
+    result.push(await withShiftMetrics(db, shift));
   }
   res.json(result);
 });
@@ -48,7 +65,7 @@ router.get('/:id', requireAdmin, async (req: Request, res: Response) => {
   const shift = await db.prepare('SELECT s.*, u.username FROM cashier_shifts s LEFT JOIN users u ON u.id=s.user_id WHERE s.id=?').get(req.params.id) as any;
   if (!shift) { res.status(404).json({ error: 'Shift not found' }); return; }
   if (shift.user_id !== req.user!.id && req.user!.role !== 'admin') { res.status(403).json({ error: 'You can only view your own shift' }); return; }
-  res.json(shift);
+  res.json(await withShiftMetrics(db, shift));
 });
 
 router.post('/open', requireAdmin, async (req: Request, res: Response) => {
@@ -74,10 +91,8 @@ router.post('/:id/close', requireAdmin, async (req: Request, res: Response) => {
   if (!Number.isFinite(closingCash) || closingCash < 0) { res.status(400).json({ error: 'Closing cash must be zero or greater' }); return; }
   const shift = await db.prepare("SELECT * FROM cashier_shifts WHERE id = ? AND status = 'open'").get(req.params.id) as any;
   if (!shift) { res.status(404).json({ error: 'Open shift not found' }); return; }
-  const cash = await db.prepare("SELECT COALESCE(SUM(p.amount),0) total FROM payments p JOIN invoices i ON i.id=p.invoice_id WHERE p.shift_id=? AND p.method = 'cash' AND i.status <> 'voided'").get(shift.id) as any;
-  const refunds = await db.prepare("SELECT COALESCE(SUM(r.amount),0) total FROM refunds r JOIN invoices i ON i.id=r.invoice_id WHERE r.method='cash' AND r.shift_id=? AND i.status <> 'voided'").get(shift.id) as any;
-  const events = await db.prepare("SELECT COALESCE(SUM(CASE WHEN type='cash_in' THEN amount ELSE -amount END),0) total FROM cash_drawer_events WHERE shift_id=?").get(shift.id) as any;
-  const expected = Number(shift.opening_cash) + Number(cash.total || 0) - Number(refunds.total || 0) + Number(events.total || 0);
+  const metrics = await getShiftMetrics(db, shift.id);
+  const expected = Number(shift.opening_cash) + metrics.expected_cash_delta;
   await db.prepare("UPDATE cashier_shifts SET closed_at = datetime('now'), expected_cash = ?, closing_cash = ?, variance = ?, status = 'closed', notes = ?, closed_by = ? WHERE id = ?")
     .run(expected, closingCash, closingCash - expected, req.body?.notes || null, req.user!.id, shift.id);
   await logAudit(req.user!.id, 'close', 'cashier_shift', shift.id, `Expected ${expected}; counted ${closingCash}`);
