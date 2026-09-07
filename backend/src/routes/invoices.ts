@@ -110,7 +110,13 @@ router.get('/:id', async (req: Request, res: Response) => {
     WHERE i.id = ?
   `).get(req.params.id);
   if (!invoice) { res.status(404).json({ error: 'Invoice not found' }); return; }
-  const items = await db.prepare('SELECT * FROM invoice_items WHERE invoice_id = ?').all(req.params.id);
+  const items = await db.prepare(`
+    SELECT ii.*,
+      COALESCE((SELECT SUM(ir.quantity) FROM invoice_returns ir WHERE ir.invoice_item_id = ii.id), 0) AS returned_quantity,
+      COALESCE((SELECT SUM(ir.total_credit) FROM invoice_returns ir WHERE ir.invoice_item_id = ii.id), 0) AS returned_total,
+      MAX(ii.quantity - COALESCE((SELECT SUM(ir.quantity) FROM invoice_returns ir WHERE ir.invoice_item_id = ii.id), 0), 0) AS remaining_quantity
+    FROM invoice_items ii WHERE ii.invoice_id = ? ORDER BY ii.rowid
+  `).all(req.params.id);
   const payments = await db.prepare('SELECT * FROM payments WHERE invoice_id = ?').all(req.params.id);
   const creditMemos = await db.prepare("SELECT * FROM credit_memos WHERE invoice_id = ? AND status = 'issued' ORDER BY created_at DESC").all(req.params.id);
   const refunds = await db.prepare('SELECT * FROM refunds WHERE invoice_id = ? ORDER BY created_at DESC').all(req.params.id);

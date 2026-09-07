@@ -33,6 +33,9 @@ export interface InvoiceItem {
   quantity: number;
   unit_price: number;
   total: number;
+  returned_quantity?: number;
+  returned_total?: number;
+  remaining_quantity?: number;
 }
 
 export interface Payment {

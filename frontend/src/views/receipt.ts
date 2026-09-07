@@ -159,9 +159,12 @@ function buildThermalReceipt({ inv, settings, dateStr, timeStr, totalPaid, adjus
   const center = (s: string) => s.length >= width ? s.slice(0, width) : ' '.repeat(Math.floor((width - s.length) / 2)) + s;
   const row = (label: string, value: string) => label.padEnd(Math.max(1, width - value.length)) + value;
   const safe = (value: any, fallback = '') => String(value ?? fallback).replace(/[\r\n]/g, ' ').trim();
+  const returnedTotal = (inv.items || []).reduce((sum: number, item: any) => sum + Number(item.returned_total || 0), 0);
   const itemLines = (inv.items || []).flatMap((item: any) => {
+    const quantity = Math.max(0, Number(item.remaining_quantity ?? item.quantity));
+    if (quantity <= 0) return [];
     const name = safe(item.description, 'Item').slice(0, width);
-    return [`${name}`, row(`  ${item.quantity} x ${fmtPeso(item.unit_price)}`, fmtPeso(item.total))];
+    return [`${name}`, row(`  ${quantity} x ${fmtPeso(item.unit_price)}`, fmtPeso(quantity * Number(item.unit_price)))];
   });
   const paymentMethods = (inv.payments || []).map((p: any) => safe(p.method)).join(', ') || '—';
   const buyerName = safe((inv as any).customer_name, 'Walk-in');
@@ -179,6 +182,7 @@ function buildThermalReceipt({ inv, settings, dateStr, timeStr, totalPaid, adjus
     'ITEMS', ...itemLines, line,
     isVat ? row('VATable Sales', fmtPeso(Math.max(0, adjustedTotal - vatAmount))) : '',
     isVat ? row(`VAT (${(vatRate * 100).toFixed(0)}%)`, fmtPeso(vatAmount)) : '',
+    returnedTotal > 0 ? row('Returns', `-${fmtPeso(returnedTotal)}`) : '',
     row('TOTAL AMOUNT DUE', fmtPeso(adjustedTotal)), line,
     `Amount in Words: ${safe(numberToWords(adjustedTotal))}`, line,
     row('Payment Received', fmtPeso(totalPaid)), row('Outstanding Balance', fmtPeso(balance)), row('Mode of Payment', paymentMethods),
@@ -191,7 +195,8 @@ function buildThermalReceipt({ inv, settings, dateStr, timeStr, totalPaid, adjus
 
 function receiptPreviewHtml({ inv, settings, dateStr, timeStr, totalPaid, adjustedTotal, balance, isVat, vatRate, vatAmount }: ReceiptContext): string {
   const safe = (value: any, fallback = '') => esc(String(value ?? fallback));
-  const rows = (inv.items || []).map((item: any) => `<tr class="receipt-item-name"><td colspan="4">${safe(item.description, 'Item')}</td></tr><tr class="receipt-item-meta"><td colspan="2">${safe(item.quantity)} x ${fmtPeso(item.unit_price)}</td><td colspan="2">${fmtPeso(item.total)}</td></tr>`).join('');
+  const returnedTotal = (inv.items || []).reduce((sum: number, item: any) => sum + Number(item.returned_total || 0), 0);
+  const rows = (inv.items || []).filter((item: any) => Number(item.remaining_quantity ?? item.quantity) > 0).map((item: any) => { const quantity = Math.max(0, Number(item.remaining_quantity ?? item.quantity)); return `<tr class="receipt-item-name"><td colspan="4">${safe(item.description, 'Item')}</td></tr><tr class="receipt-item-meta"><td colspan="2">${quantity} x ${fmtPeso(item.unit_price)}</td><td colspan="2">${fmtPeso(quantity * Number(item.unit_price))}</td></tr>`; }).join('');
   const methods = (inv.payments || []).map((p: any) => safe(p.method)).join(', ') || '—';
   const buyerName = safe((inv as any).customer_name, 'Walk-in');
   const buyerAddress = safe((inv as any).buyer_address || (inv as any).customer_address);
@@ -201,7 +206,7 @@ function receiptPreviewHtml({ inv, settings, dateStr, timeStr, totalPaid, adjust
     <h4>RECEIPT</h4>
     <dl class="receipt-paper-info"><dt>Document No.</dt><dd>${safe(inv.invoice_number)}</dd><dt>Date</dt><dd>${safe(dateStr)}</dd><dt>Time</dt><dd>${safe(timeStr)}</dd><dt>Buyer</dt><dd>${buyerName}</dd>${buyerAddress ? `<dt>Address</dt><dd>${buyerAddress}</dd>` : ''}</dl>
     <table><thead><tr><th colspan="4">ITEMS</th></tr></thead><tbody>${rows}</tbody></table>
-    <div class="receipt-paper-total">${isVat ? `<div><span>VATable Sales</span><span>${fmtPeso(Math.max(0, adjustedTotal - vatAmount))}</span></div><div><span>VAT (${(vatRate * 100).toFixed(0)}%)</span><span>${fmtPeso(vatAmount)}</span></div>` : ''}<div class="grand"><span>TOTAL AMOUNT DUE</span><span>${fmtPeso(adjustedTotal)}</span></div></div>
+    <div class="receipt-paper-total">${isVat ? `<div><span>VATable Sales</span><span>${fmtPeso(Math.max(0, adjustedTotal - vatAmount))}</span></div><div><span>VAT (${(vatRate * 100).toFixed(0)}%)</span><span>${fmtPeso(vatAmount)}</span></div>` : ''}${returnedTotal > 0 ? `<div><span>Returns</span><span>-${fmtPeso(returnedTotal)}</span></div>` : ''}<div class="grand"><span>TOTAL AMOUNT DUE</span><span>${fmtPeso(adjustedTotal)}</span></div></div>
     <p class="receipt-paper-words">Amount in Words: <strong>${safe(numberToWords(adjustedTotal))}</strong></p>
     <div class="receipt-paper-payments"><div><span>Payment Received</span><span>${fmtPeso(totalPaid)}</span></div><div><span>Outstanding Balance</span><span>${fmtPeso(balance)}</span></div><div><span>Mode of Payment</span><span>${methods}</span></div></div>
     ${(inv as any).notes ? `<p class="receipt-paper-words"><strong>Notes:</strong> ${safe((inv as any).notes)}</p>` : ''}

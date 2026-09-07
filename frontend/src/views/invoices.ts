@@ -212,6 +212,8 @@ export async function showInvoiceDetail(id: string) {
   const totalPaid = inv.payments.reduce((s: number, p: any) => s + p.amount, 0) - ((inv as any).refunds || []).reduce((s: number, r: any) => s + r.amount, 0);
   const adjustedTotal = Number((inv as any).adjusted_total ?? inv.total);
   const balance = adjustedTotal - totalPaid;
+  const returnedTotal = (inv.items || []).reduce((s: number, item: any) => s + Number(item.returned_total || 0), 0);
+  const refundedTotal = ((inv as any).refunds || []).reduce((s: number, refund: any) => s + Number(refund.amount || 0), 0);
   const modalId = 'invoice-detail-modal';
   document.getElementById(modalId)?.remove();
   const modal = document.createElement('div');
@@ -244,8 +246,10 @@ export async function showInvoiceDetail(id: string) {
       <div class="summary-line"><span>Subtotal</span><span>${fmtPeso(inv.subtotal)}</span></div>
       ${Number(inv.tax_rate) > 0 ? `<div class="summary-line"><span>Tax (${(Number(inv.tax_rate)*100).toFixed(0)}%)</span><span>${fmtPeso(inv.tax_amount)}</span></div>` : ''}
       <div class="summary-line"><span>Original Total</span><span>${fmtPeso(inv.total)}</span></div>
+      ${returnedTotal > 0 ? `<div class="summary-line"><span>Returns</span><span style="color:var(--c-warning)">−${fmtPeso(returnedTotal)}</span></div>` : ''}
       ${adjustedTotal !== Number(inv.total) ? `<div class="summary-line"><span>Adjusted Total</span><span>${fmtPeso(adjustedTotal)}</span></div>` : ''}
       <div class="summary-line"><span>Paid</span><span style="color:var(--c-success)">${fmtPeso(totalPaid)}</span></div>
+      ${refundedTotal > 0 ? `<div class="summary-line"><span>Refunded</span><span style="color:var(--c-warning)">−${fmtPeso(refundedTotal)}</span></div>` : ''}
       <div class="summary-line" style="font-weight:600;font-size:var(--fs-lg)"><span>Balance</span><span style="color:${balance < 0 ? 'var(--c-warning)' : balance > 0 ? 'var(--c-danger)' : 'var(--c-success)'}">${fmtPeso(balance)}</span></div>
     </div>
 
@@ -291,8 +295,8 @@ export async function showInvoiceDetail(id: string) {
       ${inv.items.map((item: any) => `
         <div class="line-item" style="margin-bottom:var(--space-2)">
           <span style="flex:2;font-size:var(--fs-sm)">${esc(item.description)}</span>
-          <span style="flex:1;font-size:var(--fs-sm);color:var(--c-text-muted)">Sold: ${item.quantity}</span>
-          <input id="ret-qty-${item.id}" type="number" min="0" max="${item.quantity}" value="0" style="flex:1;min-height:32px;font-size:var(--fs-sm);width:60px" />
+          <span style="flex:1;font-size:var(--fs-sm);color:var(--c-text-muted)">Sold: ${item.quantity}<br>Returned: ${Number(item.returned_quantity || 0)}<br><strong>Remaining: ${Number(item.remaining_quantity ?? item.quantity)}</strong></span>
+          <input id="ret-qty-${item.id}" type="number" min="0" max="${Number(item.remaining_quantity ?? item.quantity)}" value="0" ${Number(item.remaining_quantity ?? item.quantity) <= 0 ? 'disabled' : ''} aria-label="Return quantity for ${esc(item.description)}" style="flex:1;min-height:32px;font-size:var(--fs-sm);width:60px" />
         </div>
       `).join('')}
     </div>
@@ -337,11 +341,11 @@ export async function submitCreditMemo(id: string) {
   catch (e: any) { showToast(e.message); }
 }
 
-export async function recordRefund(id: string) {
+export async function recordRefund(id: string, suggestedAmount = 0) {
   let shifts: any[] = [];
   try { shifts = await apiGet<any[]>('/shifts/active'); } catch { /* non-cash refunds remain available if shift lookup fails */ }
   const shiftOptions = shifts.map(shift => `<option value="${esc(shift.id)}">${esc(shift.username || 'Cashier')} · ${fmtPeso(shift.expected_cash)}</option>`).join('');
-  showModal(`<h3>Record Refund</h3><div class="form-group"><label for="refund-amount">Amount *</label><input id="refund-amount" type="number" min="0.01" step="0.01" autofocus placeholder="0.00" /></div><div class="form-group"><label for="refund-method">Refund method *</label><select id="refund-method" onchange="document.getElementById('refund-shift-wrap')?.classList.toggle('is-hidden', this.value !== 'cash')"><option value="cash">Cash</option><option value="card">Card</option><option value="bank">Bank Transfer</option><option value="gcash">GCash</option><option value="check">Check</option></select></div><div id="refund-shift-wrap" class="form-group"><label for="refund-shift">Cashier shift *</label>${shiftOptions ? `<select id="refund-shift"><option value="">Select active shift...</option>${shiftOptions}</select>` : '<p class="field-help">No active cashier shift is available for a cash refund.</p>'}</div><div class="modal-actions"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitRefund('${id}')">Record Refund</button></div>`, 'invoice-action-modal');
+  showModal(`<h3>Record Refund</h3><p class="modal-help">A refund records money returned to the buyer. It is separate from the stock return.</p><div class="form-group"><label for="refund-amount">Amount *</label><input id="refund-amount" type="number" min="0.01" step="0.01" value="${suggestedAmount > 0 ? suggestedAmount.toFixed(2) : ''}" autofocus placeholder="0.00" /></div><div class="form-group"><label for="refund-method">Refund method *</label><select id="refund-method" onchange="document.getElementById('refund-shift-wrap')?.classList.toggle('is-hidden', this.value !== 'cash')"><option value="cash">Cash</option><option value="card">Card</option><option value="bank">Bank Transfer</option><option value="gcash">GCash</option><option value="check">Check</option></select></div><div id="refund-shift-wrap" class="form-group"><label for="refund-shift">Cashier shift *</label>${shiftOptions ? `<select id="refund-shift"><option value="">Select active shift...</option>${shiftOptions}</select>` : '<p class="field-help">No active cashier shift is available for a cash refund.</p>'}</div><div class="modal-actions"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitRefund('${id}')">Record Refund</button></div>`, 'invoice-action-modal');
 }
 export async function submitRefund(id: string) {
   const amount = Number(val('refund-amount')); const method = val('refund-method');
@@ -393,17 +397,21 @@ export async function returnItems(invoiceId: string) {
     for (const item of inv.items) {
       if (!item.material_id) continue;
       const qty = parseFloat((document.getElementById(`ret-qty-${item.id}`) as HTMLInputElement)?.value || '0');
-      if (qty > 0 && qty <= item.quantity) {
+      const remaining = Number(item.remaining_quantity ?? item.quantity);
+      if (qty > 0 && qty <= remaining) {
         retItems.push({ invoice_item_id: item.id, material_id: item.material_id, quantity: qty } as any);
       }
     }
     if (!retItems.length) { showToast('Enter return quantities'); return; }
     const ok = await showConfirmModal(`<h3>Confirm Returns</h3><p style="color:var(--c-text-secondary)">Return ${retItems.length} item(s) and restore stock?</p>`);
     if (!ok) return;
+    const returnTotal = retItems.reduce((sum, returned) => {
+      const original = inv.items.find((item: any) => item.id === returned.invoice_item_id);
+      return sum + (Number(original?.unit_price || 0) * returned.quantity * (1 + Number(inv.tax_rate || 0)));
+    }, 0);
     await apiPost(`/invoices/${invoiceId}/return`, { items: retItems });
-    showToast('Returns processed — stock restored', 'success');
     closeModal();
-    loadView('invoices');
+    showModal(`<h3>Return processed</h3><p class="modal-help">The returned stock was restored successfully.</p><div class="info-callout"><strong>Money not refunded yet.</strong><br>Use Record Refund only if money will be given back to the customer. A cash refund will automatically reduce the expected cash in the selected cashier shift.</div><div class="modal-actions"><button class="btn" onclick="closeModal();loadView('invoices')">Close</button><button class="btn btn-primary" onclick="recordRefund('${invoiceId}', ${Math.round(returnTotal * 100) / 100})">Record Refund</button></div>`, 'invoice-action-modal');
   } catch (e: any) { showToast(e.message); }
   finally { disableBtn('ret-btn', false); }
 }
