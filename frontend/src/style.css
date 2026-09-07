@@ -926,24 +926,27 @@ body.show-install #install-prompt { display: flex; }
 .receipt-preview-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; }
 .receipt-preview-heading h3 { margin:.25rem 0 0; }
 .receipt-preview-note { color:var(--c-text-secondary); font-size:var(--fs-sm); line-height:1.45; }
-.receipt-paper { width:min(100%, 420px); max-height:62vh; overflow:auto; margin:var(--space-4) auto 0; padding:24px 22px; color:#111; background:#fff; border:1px solid #d7d7d7; box-shadow:0 5px 20px rgba(0,0,0,.25); font-family:Arial, sans-serif; font-size:11px; line-height:1.45; }
-.receipt-paper-header { display:grid; gap:3px; text-align:center; padding-bottom:10px; border-bottom:2px solid #111; }
-.receipt-paper-header strong { font-size:17px; letter-spacing:.06em; text-transform:uppercase; }
-.receipt-paper-header span { font-size:9px; }
-.receipt-paper h4 { margin:10px 0; padding-bottom:7px; text-align:center; border-bottom:1px solid #111; color:#111; font-size:12px; }
-.receipt-paper-info { display:grid; grid-template-columns:95px 1fr; gap:3px 8px; margin:0 0 10px; }
-.receipt-paper-info dt { font-size:9px; font-weight:700; text-transform:uppercase; }
+.receipt-paper { width:302px; max-width:100%; max-height:62vh; overflow:auto; box-sizing:border-box; margin:var(--space-4) auto 0; padding:18px 14px 22px; color:#111; background:#fff; border:1px solid #d7d7d7; box-shadow:0 5px 20px rgba(0,0,0,.25); font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace; font-size:10px; line-height:1.35; letter-spacing:0; }
+.receipt-paper-header { display:grid; gap:3px; text-align:center; padding-bottom:8px; border-bottom:1px solid #111; }
+.receipt-paper-header strong { font-size:14px; letter-spacing:.04em; text-transform:uppercase; }
+.receipt-paper-header span { font-size:8px; line-height:1.3; }
+.receipt-paper h4 { margin:8px 0; padding:5px 0; text-align:center; border-bottom:1px solid #111; color:#111; font-size:11px; }
+.receipt-paper-info { display:grid; grid-template-columns:92px minmax(0,1fr); gap:3px 6px; margin:0 0 8px; }
+.receipt-paper-info dt { font-size:8px; font-weight:700; text-transform:uppercase; }
 .receipt-paper-info dd { margin:0; text-align:right; overflow-wrap:anywhere; }
-.receipt-paper table { width:100%; border-collapse:collapse; margin:8px 0; }
-.receipt-paper th, .receipt-paper td { padding:5px 2px; border-top:1px dotted #aaa; background:#fff; color:#111; font-size:10px; text-align:right; }
-.receipt-paper th:first-child, .receipt-paper td:first-child { text-align:left; }
-.receipt-paper-total, .receipt-paper-payments { border-top:1px solid #111; margin-top:8px; padding-top:6px; }
-.receipt-paper-total > div, .receipt-paper-payments > div { display:flex; justify-content:space-between; gap:8px; padding:2px 0; }
-.receipt-paper-total .grand { margin-top:4px; padding:7px 0; border-top:2px solid #111; border-bottom:2px solid #111; font-weight:800; font-size:13px; }
-.receipt-paper-words { padding:7px 0; font-size:10px; font-style:italic; }
-.receipt-paper-footer { margin-top:14px; padding-top:8px; border-top:1px solid #111; text-align:center; }
-.receipt-paper-footer small { font-size:9px; }
-@media (max-width:680px) { .receipt-preview-content { padding:var(--space-3); } .receipt-paper { max-height:58vh; padding:18px 14px; } }
+.receipt-paper table { width:100%; table-layout:fixed; border-collapse:collapse; margin:7px 0; }
+.receipt-paper th, .receipt-paper td { padding:3px 1px; background:#fff; color:#111; font-size:9px; text-align:right; overflow-wrap:anywhere; }
+.receipt-paper th { border-top:1px solid #111; border-bottom:1px solid #111; text-align:left; letter-spacing:.04em; }
+.receipt-paper .receipt-item-name td { padding-top:5px; text-align:left; }
+.receipt-paper .receipt-item-meta td { border-bottom:1px dotted #888; padding-bottom:4px; }
+.receipt-paper .receipt-item-meta td:first-child { text-align:left; }
+.receipt-paper-total, .receipt-paper-payments { border-top:1px solid #111; margin-top:7px; padding-top:5px; }
+.receipt-paper-total > div, .receipt-paper-payments > div { display:flex; justify-content:space-between; gap:6px; padding:2px 0; }
+.receipt-paper-total .grand { margin-top:3px; padding:6px 0; border-top:2px solid #111; border-bottom:2px solid #111; font-weight:800; font-size:11px; }
+.receipt-paper-words { padding:6px 0; font-size:9px; font-style:italic; }
+.receipt-paper-footer { margin-top:10px; padding-top:7px; border-top:1px solid #111; text-align:center; }
+.receipt-paper-footer small { font-size:8px; }
+@media (max-width:680px) { .receipt-preview-content { padding:var(--space-3); } .receipt-paper { max-height:58vh; padding:16px 12px 20px; } }
 
 /* Contextual user manual */
 .help-fab {
