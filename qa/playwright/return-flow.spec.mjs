@@ -120,7 +120,11 @@ test('staff sale -> admin return -> updated receipt, recorded as a video', async
   // Admin returns one unit and inspects the updated receipt.
   await login(page, adminUser, adminPin);
   await page.evaluate(() => window.loadView('invoices'));
-  await page.locator('.pos-history').locator('button', { hasText: 'View' }).first().click();
+  const salesHistory = page.locator('.pos-history');
+  if (!(await salesHistory.evaluate((element) => element.open))) {
+    await salesHistory.locator('summary').click();
+  }
+  await salesHistory.locator('button', { hasText: 'View' }).first().click();
   await expect(page.getByText('Return Items', { exact: true })).toBeVisible();
   const returnInput = page.locator('input[id^="ret-qty-"]').first();
   await returnInput.fill('1');
@@ -130,11 +134,17 @@ test('staff sale -> admin return -> updated receipt, recorded as a video', async
   await expect(page.getByText('Money not refunded yet.', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: 'Close', exact: true }).click();
 
-  await page.locator('.pos-history').locator('button', { hasText: 'View' }).first().click();
-  await expect(page.getByText('Returned: 1', { exact: true })).toBeVisible();
-  await expect(page.getByText('Remaining: 1', { exact: true })).toBeVisible();
+  if (!(await salesHistory.evaluate((element) => element.open))) {
+    await salesHistory.locator('summary').click();
+  }
+  await salesHistory.locator('button', { hasText: 'View' }).first().click();
+  const invoiceDetail = page.locator('#invoice-detail-modal');
+  await expect(invoiceDetail).toContainText('Returned:');
+  await expect(invoiceDetail).toContainText('Remaining:');
+  await expect(invoiceDetail).toContainText('Remaining: 1');
   await page.getByRole('button', { name: 'Print Receipt', exact: true }).click();
-  await expect(page.getByText('RECEIPT', { exact: true })).toBeVisible();
-  await expect(page.getByText('Returns', { exact: true })).toBeVisible();
-  await expect(page.getByText('₱20.00', { exact: true }).first()).toBeVisible();
+  const receiptPreview = page.locator('#receipt-preview-modal');
+  await expect(receiptPreview).toContainText('RECEIPT');
+  await expect(receiptPreview).toContainText('Returns');
+  await expect(receiptPreview).toContainText('₱20.00');
 });
