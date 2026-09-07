@@ -14,7 +14,7 @@ export async function renderDashboard(): Promise<string> {
   const now = new Date();
   const today = businessDate();
 
-  const todaySales = paySummary.todayTotal || 0;
+  const todaySales = Number(analytics.todaySales || 0);
   const last7: { date: string; label: string; total: number; profit: number }[] = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(now);
@@ -37,6 +37,8 @@ export async function renderDashboard(): Promise<string> {
   const pendingCount = Number(invoiceSummary.pending || 0);
   const partialCount = Number(invoiceSummary.partial || 0);
   const paidCount = Number(invoiceSummary.paid || 0);
+  const unpaidCount = pendingCount + partialCount;
+  const assignedDeliveries = Number(analytics.deliverySummary?.assigned || 0);
 
   const recentInvoices = invoices.slice(0, 5);
 
@@ -160,7 +162,7 @@ export async function renderDashboard(): Promise<string> {
   return `
     <div class="dashboard-grid dashboard-summary-grid">
       <div class="dashboard-card card-success">
-        <div class="card-label">Today's Collections</div>
+        <div class="card-label">Today's Sales</div>
         <div class="card-value">${fmtPeso(todaySales)}</div>
         <div class="card-sub">${today}</div>
       </div>
@@ -169,25 +171,20 @@ export async function renderDashboard(): Promise<string> {
         <div class="card-value">${fmtPeso(analytics.todayProfit || 0)}</div>
         <div class="card-sub">Estimated gross profit</div>
       </div>
-      <div class="dashboard-card card-danger">
-        <div class="card-label">Outstanding</div>
+      <div class="dashboard-card card-warning">
+        <div class="card-label">Today's Expenses</div>
+        <div class="card-value">${fmtPeso(analytics.todayExpenses || 0)}</div>
+        <div class="card-sub">Recorded today</div>
+      </div>
+      <div class="dashboard-card card-info clickable" onclick="document.querySelector('[data-view=invoices]')?.click()">
+        <div class="card-label">Delivery Status</div>
+        <div class="card-value">${assignedDeliveries}</div>
+        <div class="card-sub">Assigned for delivery</div>
+      </div>
+      <div class="dashboard-card card-danger clickable" onclick="document.querySelector('[data-view=invoices]')?.click()">
+        <div class="card-label">Unpaid Invoices</div>
         <div class="card-value">${fmtPeso(outstanding)}</div>
-        <div class="card-sub">${invoices.filter((i: Invoice) => i.status === 'pending' || i.status === 'partial').length} unpaid</div>
-      </div>
-      <div class="dashboard-card card-warning clickable" onclick="document.querySelector('[data-view=materials]')?.click()">
-        <div class="card-label">Low Stock Items</div>
-        <div class="card-value">${lowStockMats.length}</div>
-        <div class="card-sub">Click to view materials</div>
-      </div>
-      <div class="dashboard-card card-info">
-        <div class="card-label">Stock Value</div>
-        <div class="card-value" style="font-size:var(--fs-xl)">${fmtPeso(sv.total_cost)}</div>
-        <div class="card-sub">Cost: ${fmtPeso(sv.total_cost)} / Retail: ${fmtPeso(sv.total_retail)}</div>
-      </div>
-      <div class="dashboard-card card-info">
-        <div class="card-label">Avg. Margin</div>
-        <div class="card-value">${avgMargin.toFixed(1)}%</div>
-        <div class="card-sub">${analytics.weekRevenue ? 'Week revenue: ' + fmtPeso(analytics.weekRevenue) : 'Across all materials'}</div>
+        <div class="card-sub">${unpaidCount} unpaid</div>
       </div>
     </div>
 

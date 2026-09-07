@@ -87,7 +87,10 @@ router.get('/dashboard', async (_req: Request, res: Response) => {
       profitTrend,
       stockValue,
       materialMargins,
+      todaySales,
       todayProfit,
+      todayExpenses,
+      deliverySummary,
       weekRevenue,
       monthRevenue,
       lastMonthRevenue,
@@ -143,9 +146,24 @@ router.get('/dashboard', async (_req: Request, res: Response) => {
         FROM materials ORDER BY margin_pct DESC LIMIT 12
       `).all() as Promise<any[]>,
       db.prepare(`
+        SELECT COALESCE(SUM(f.adjusted_total), 0) AS sales
+        FROM v_invoice_financials f
+        WHERE f.status <> 'voided' AND date(f.issued_date, '+8 hours') = date('now', '+8 hours')
+      `).get() as Promise<any>,
+      db.prepare(`
         SELECT COALESCE(SUM(f.net_sales * COALESCE(v.profit_ratio, 0)), 0) AS profit
         FROM v_invoice_financials f LEFT JOIN v_invoice_profit_margin v ON v.invoice_id = f.invoice_id
         WHERE f.status <> 'voided' AND date(f.issued_date, '+8 hours') = date('now', '+8 hours')
+      `).get() as Promise<any>,
+      db.prepare(`
+        SELECT COALESCE(SUM(amount), 0) AS expenses
+        FROM expenses
+        WHERE date(expense_date) = date('now', '+8 hours')
+      `).get() as Promise<any>,
+      db.prepare(`
+        SELECT COUNT(*) AS assigned
+        FROM invoices
+        WHERE status <> 'voided' AND delivery_person IS NOT NULL AND trim(delivery_person) <> ''
       `).get() as Promise<any>,
       db.prepare(`
         SELECT COALESCE(SUM(amount), 0) AS total
@@ -243,7 +261,10 @@ router.get('/dashboard', async (_req: Request, res: Response) => {
         material_count: stockValue.material_count,
       },
       materialMargins,
+      todaySales: Math.round(Number(todaySales.sales || 0) * 100) / 100,
       todayProfit: Math.round(todayProfit.profit * 100) / 100,
+      todayExpenses: Math.round(Number(todayExpenses.expenses || 0) * 100) / 100,
+      deliverySummary: { assigned: Number(deliverySummary.assigned || 0) },
       weekRevenue: Math.round(weekRevenue.total * 100) / 100,
       monthRevenue: {
         revenue: Math.round(monthRevenue.revenue * 100) / 100,
@@ -285,7 +306,7 @@ router.get('/dashboard', async (_req: Request, res: Response) => {
     res.json({
       topMaterials: [], profitTrend: [],
       stockValue: { total_cost: 0, total_retail: 0, material_count: 0 },
-      materialMargins: [], todayProfit: 0, weekRevenue: 0,
+      materialMargins: [], todaySales: 0, todayProfit: 0, todayExpenses: 0, deliverySummary: { assigned: 0 }, weekRevenue: 0,
       monthRevenue: { revenue: 0, profit: 0 },
       lastMonthRevenue: { revenue: 0, profit: 0 },
       yearRevenue: { revenue: 0, profit: 0 },

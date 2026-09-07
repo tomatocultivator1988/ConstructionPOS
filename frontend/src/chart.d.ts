@@ -80,10 +80,6 @@ interface Window {
   editMaterial: (id: string) => void;
   updateMaterial: (id: string) => void;
   delMaterial: (id: string) => void;
-  showInvoiceModal: () => void;
-  toggleWalkin: () => void;
-  addLineItem: () => void;
-  createInvoice: () => void;
   showInvoiceDetail: (id: string) => void;
   recordPayment: (invoiceId: string) => void;
   voidInvoice: (invoiceId: string) => void;

@@ -69,7 +69,10 @@ export interface Analytics {
   profitTrend: any[];
   stockValue: { total_cost: number; total_retail: number; material_count: number };
   materialMargins: any[];
+  todaySales: number;
   todayProfit: number;
+  todayExpenses: number;
+  deliverySummary: { assigned: number };
   weekRevenue: number;
   monthRevenue: { revenue: number; profit: number };
   lastMonthRevenue: { revenue: number; profit: number };

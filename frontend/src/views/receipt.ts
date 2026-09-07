@@ -164,6 +164,9 @@ function buildThermalReceipt({ inv, settings, dateStr, timeStr, totalPaid, adjus
     return [`${name}`, row(`  ${item.quantity} x ${fmtPeso(item.unit_price)}`, fmtPeso(item.total))];
   });
   const paymentMethods = (inv.payments || []).map((p: any) => safe(p.method)).join(', ') || '—';
+  const buyerName = safe((inv as any).customer_name, 'Walk-in');
+  const buyerAddress = safe((inv as any).buyer_address || (inv as any).customer_address);
+  const isCredit = Boolean((inv as any).credit_account_name) || (inv.payments || []).some((p: any) => String(p.method).toLowerCase() === 'credit');
   const content = [
     '\x1b@', '\x1b\x61\x01', safe(settings.business_name, 'Jeg Enterprises'),
     'Hardware & Building Materials Dealer', safe(settings.business_address, 'Business address not configured'),
@@ -171,8 +174,8 @@ function buildThermalReceipt({ inv, settings, dateStr, timeStr, totalPaid, adjus
     settings.business_rdo ? `RDO/Branch: ${safe(settings.business_rdo)}` : '', '\x1b\x61\x00', line,
     'RECEIPT', line,
     row('Document No.', safe(inv.invoice_number)), row('Date', dateStr), row('Time', timeStr),
-    row('Sold To', safe((inv as any).customer_name, 'Walk-in')),
-    (inv as any).buyer_address ? row('Address', safe((inv as any).buyer_address)) : '', line,
+    row('Buyer', buyerName),
+    buyerAddress ? row('Address', buyerAddress) : '', line,
     'ITEMS', ...itemLines, line,
     isVat ? row('VATable Sales', fmtPeso(Math.max(0, adjustedTotal - vatAmount))) : '',
     isVat ? row(`VAT (${(vatRate * 100).toFixed(0)}%)`, fmtPeso(vatAmount)) : '',
@@ -180,6 +183,7 @@ function buildThermalReceipt({ inv, settings, dateStr, timeStr, totalPaid, adjus
     `Amount in Words: ${safe(numberToWords(adjustedTotal))}`, line,
     row('Payment Received', fmtPeso(totalPaid)), row('Outstanding Balance', fmtPeso(balance)), row('Mode of Payment', paymentMethods),
     (inv as any).notes ? `Notes: ${safe((inv as any).notes)}` : '',
+    isCredit ? `${line}\nCUSTOMER SIGNATURE:\n\n______________________________` : '',
     '', 'Thank you for your purchase!', '\x1b\x64\x04', '\x1d\x56\x00',
   ].filter(Boolean).join('\n') + '\n';
   return encoder.encode(content);
@@ -189,14 +193,18 @@ function receiptPreviewHtml({ inv, settings, dateStr, timeStr, totalPaid, adjust
   const safe = (value: any, fallback = '') => esc(String(value ?? fallback));
   const rows = (inv.items || []).map((item: any) => `<tr class="receipt-item-name"><td colspan="4">${safe(item.description, 'Item')}</td></tr><tr class="receipt-item-meta"><td colspan="2">${safe(item.quantity)} x ${fmtPeso(item.unit_price)}</td><td colspan="2">${fmtPeso(item.total)}</td></tr>`).join('');
   const methods = (inv.payments || []).map((p: any) => safe(p.method)).join(', ') || '—';
+  const buyerName = safe((inv as any).customer_name, 'Walk-in');
+  const buyerAddress = safe((inv as any).buyer_address || (inv as any).customer_address);
+  const isCredit = Boolean((inv as any).credit_account_name) || (inv.payments || []).some((p: any) => String(p.method).toLowerCase() === 'credit');
   const tinLine = [settings.business_tin ? `TIN: ${safe(settings.business_tin)}` : '', settings.business_rdo ? `RDO/Branch: ${safe(settings.business_rdo)}` : ''].filter(Boolean).join(' · ');
   return `<div class="receipt-paper-header"><strong>${safe(settings.business_name, 'Jeg Enterprises')}</strong><span>Hardware &amp; Building Materials Dealer</span><span>${safe(settings.business_address, 'Business address not configured')}</span>${tinLine ? `<span>${tinLine}</span>` : ''}</div>
     <h4>RECEIPT</h4>
-    <dl class="receipt-paper-info"><dt>Document No.</dt><dd>${safe(inv.invoice_number)}</dd><dt>Date</dt><dd>${safe(dateStr)}</dd><dt>Time</dt><dd>${safe(timeStr)}</dd><dt>Sold To</dt><dd>${safe((inv as any).customer_name, 'Walk-in')}</dd>${(inv as any).buyer_address ? `<dt>Address</dt><dd>${safe((inv as any).buyer_address)}</dd>` : ''}</dl>
+    <dl class="receipt-paper-info"><dt>Document No.</dt><dd>${safe(inv.invoice_number)}</dd><dt>Date</dt><dd>${safe(dateStr)}</dd><dt>Time</dt><dd>${safe(timeStr)}</dd><dt>Buyer</dt><dd>${buyerName}</dd>${buyerAddress ? `<dt>Address</dt><dd>${buyerAddress}</dd>` : ''}</dl>
     <table><thead><tr><th colspan="4">ITEMS</th></tr></thead><tbody>${rows}</tbody></table>
     <div class="receipt-paper-total">${isVat ? `<div><span>VATable Sales</span><span>${fmtPeso(Math.max(0, adjustedTotal - vatAmount))}</span></div><div><span>VAT (${(vatRate * 100).toFixed(0)}%)</span><span>${fmtPeso(vatAmount)}</span></div>` : ''}<div class="grand"><span>TOTAL AMOUNT DUE</span><span>${fmtPeso(adjustedTotal)}</span></div></div>
     <p class="receipt-paper-words">Amount in Words: <strong>${safe(numberToWords(adjustedTotal))}</strong></p>
     <div class="receipt-paper-payments"><div><span>Payment Received</span><span>${fmtPeso(totalPaid)}</span></div><div><span>Outstanding Balance</span><span>${fmtPeso(balance)}</span></div><div><span>Mode of Payment</span><span>${methods}</span></div></div>
     ${(inv as any).notes ? `<p class="receipt-paper-words"><strong>Notes:</strong> ${safe((inv as any).notes)}</p>` : ''}
+    ${isCredit ? `<div class="receipt-paper-signature"><span>Customer Signature</span><span>______________________________</span></div>` : ''}
     <div class="receipt-paper-footer">Thank you for your purchase!</div>`;
 }

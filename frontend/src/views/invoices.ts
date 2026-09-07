@@ -122,7 +122,7 @@ export async function renderInvoices(): Promise<string> {
   const total = Math.round((cartTotal + tax) * 100) / 100;
   (window as any).__posTotal = total;
   return `<div class="pos-page">
-    <div class="pos-header"><div><div class="pos-kicker">Jeg Enterprises POS</div><h2>Point of Sale</h2></div>${isAdmin() ? '<button class="btn btn-sm" onclick="showInvoiceModal()">Advanced Invoice Form</button>' : ''}</div>
+    <div class="pos-header"><div><div class="pos-kicker">Jeg Enterprises POS</div><h2>Point of Sale</h2></div></div>
     <div class="pos-layout">
       <aside class="pos-categories"><div class="pos-panel-title">Categories</div><button class="pos-category ${!posCategory ? 'active' : ''}" onclick="setPOSCategory('')">All Categories</button>${categoryButtons}</aside>
       <section class="pos-products"><div class="pos-search"><input id="pos-search" type="search" value="${esc(posSearch)}" placeholder="Search material name, category, or unit..." oninput="filterPOSMaterials(this.value)" /><button class="btn btn-sm pos-camera-btn" onclick="startPOSCameraScan()" title="Scan barcode with camera">Scan Barcode</button><span>${filteredMaterials.length} item${filteredMaterials.length === 1 ? '' : 's'}</span></div><div class="pos-product-grid">${filteredMaterials.length ? filteredMaterials.map((m: Material) => `<button class="pos-product ${Number(m.stock) <= Number(m.reorder_point) ? 'low-stock' : ''}" onclick="addPOSItem('${m.id}')"><span class="pos-product-name">${esc(m.name)}</span><span class="pos-product-meta">${esc(m.unit)} · ${m.stock} in stock</span><strong>${fmtPeso(m.price_per_unit)}</strong></button>`).join('') : '<div class="pos-empty">No materials match your search.</div>'}</div></section>
@@ -205,122 +205,6 @@ export async function completePOSSale() {
     else showToast('Sale completed', 'success');
     loadView('invoices');
   } catch (e: any) { showToast(e.message || 'Unable to complete sale'); if (btn) btn.disabled = false; }
-}
-
-export function showInvoiceModal() {
-  const materials = (window as any).__invMaterials || [];
-  const matOpts = materials.map((m: Material) => {
-    const cost = m.cost_price || 0;
-    const profit = m.price_per_unit - cost;
-    return `<option value="${m.id}">${esc(m.name)} (${m.stock} ${esc(m.unit)} — cost ${fmtPeso(cost)} / sell ${fmtPeso(m.price_per_unit)} / +${fmtPeso(profit)})</option>`;
-  }).join('');
-  showModal(`
-    <h3>New Invoice</h3>
-
-    <div class="info-callout">Create an invoice without taking payment. Payment can be recorded later from Receivables.</div>
-    <h4>Line Items</h4>
-    <div id="line-items">
-      <div class="line-item">
-        <select class="li-mat" style="flex:3">
-          <option value="">Select material...</option>
-          ${matOpts}
-        </select>
-        <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
-          <input placeholder="Qty" type="number" min="0.01" step="0.01" class="li-qty" />
-          <div class="li-err"></div>
-        </div>
-        <button class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">✕</button>
-      </div>
-    </div>
-    <button class="btn" onclick="addLineItem()" style="margin-bottom:1rem">+ Add Item</button>
-
-    <div class="modal-actions">
-      <button class="btn" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" id="inv-create-btn" onclick="createInvoice()">Create Invoice</button>
-    </div>
-  `, 'invoice-modal');
-}
-
-export function addLineItem() {
-  const materials = (window as any).__invMaterials || [];
-  const matOpts = materials.map((m: Material) => {
-    const cost = m.cost_price || 0;
-    const profit = m.price_per_unit - cost;
-    return `<option value="${m.id}">${esc(m.name)} (${m.stock} ${esc(m.unit)} — cost ${fmtPeso(cost)} / sell ${fmtPeso(m.price_per_unit)} / +${fmtPeso(profit)})</option>`;
-  }).join('');
-  const container = document.getElementById('line-items')!;
-  const div = document.createElement('div');
-  div.className = 'line-item';
-  div.innerHTML = `
-    <select class="li-mat" style="flex:3">
-      <option value="">Select material...</option>
-      ${matOpts}
-    </select>
-    <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
-      <input placeholder="Qty" type="number" min="0.01" step="0.01" class="li-qty" />
-      <div class="li-err"></div>
-    </div>
-    <button class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">✕</button>
-  `;
-  container.appendChild(div);
-}
-
-export async function createInvoice() {
-  document.querySelectorAll('.li-err').forEach(el => { el.textContent = ''; });
-  document.querySelectorAll('.li-qty').forEach(el => el.classList.remove('error'));
-
-  const customer_id = null;
-  const tax_rate = parseFloat((window as any).__invDefaultTax || '0');
-
-  const matList: Material[] = (window as any).__invMaterials || [];
-  let hasLineErr = false;
-  const items: any[] = [];
-
-  document.querySelectorAll('.line-item').forEach(el => {
-    const material_id = (el.querySelector('.li-mat') as HTMLSelectElement).value;
-    const qtyRaw = (el.querySelector('.li-qty') as HTMLInputElement).value;
-    const qty = parseFloat(qtyRaw);
-    const liErr = el.querySelector('.li-err') as HTMLElement;
-    const qtyInput = el.querySelector('.li-qty') as HTMLInputElement;
-    if (!material_id) { hasLineErr = true; liErr.textContent = 'Select a material'; return; }
-    if (!qtyRaw || isNaN(qty) || qty <= 0) { hasLineErr = true; liErr.textContent = 'Enter a valid quantity'; qtyInput.classList.add('error'); return; }
-    const mat = matList.find((m: Material) => m.id === material_id);
-    if (!mat) { hasLineErr = true; liErr.textContent = 'Material not found'; return; }
-    if (qty > mat.stock) {
-      hasLineErr = true;
-      liErr.textContent = `Only ${mat.stock} ${mat.unit} available`;
-      qtyInput.classList.add('error');
-      return;
-    }
-    items.push({ description: mat.name, material_id, quantity: qty, unit_price: mat.price_per_unit });
-  });
-  if (hasLineErr) return;
-  if (!items.length) { showToast('Add at least one valid line item'); return; }
-
-  const subtotal = items.reduce((s: number, i: any) => s + i.quantity * i.unit_price, 0);
-  const roundedSubtotal = Math.round(subtotal * 100) / 100;
-  const taxAmount = Math.round(roundedSubtotal * tax_rate * 100) / 100;
-  const total = Math.round((roundedSubtotal + taxAmount) * 100) / 100;
-  const customerName = 'Walk-in / Unassigned';
-
-  const confirmHtml = `
-    <h3>Confirm Invoice</h3>
-    <p style="margin-bottom:var(--space-4);color:var(--c-text-secondary)">Review the details before creating:</p>
-    <div class="summary-line"><span>Customer</span><span>${esc(customerName)}</span></div>
-    <div class="summary-line"><span>Line Items</span><span>${items.length}</span></div>
-    <div class="summary-line"><span>Subtotal</span><span>${fmtPeso(roundedSubtotal)}</span></div>
-    ${tax_rate > 0 ? `<div class="summary-line"><span>Tax (${(tax_rate*100).toFixed(0)}%)</span><span>${fmtPeso(taxAmount)}</span></div>` : ''}
-    <div class="summary-line total"><span>Total</span><span>${fmtPeso(total)}</span></div>
-  `;
-  if (!(await showConfirmModal(confirmHtml))) return;
-
-  disableBtn('inv-create-btn', true);
-  try {
-    await apiPost('/invoices', { customer_id, due_date: null, tax_rate, items });
-    closeModal();
-    loadView('invoices');
-  } catch (e: any) { showToast(e.message); }
-  finally { disableBtn('inv-create-btn', false); }
 }
 
 export async function showInvoiceDetail(id: string) {
