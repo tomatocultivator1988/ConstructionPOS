@@ -319,11 +319,11 @@ function drawPnlChart() {
   const values = [Number(d.cogs || 0), Number(d.expenses || 0), netValue];
   const total = values.reduce((sum, value) => sum + Math.max(0, value), 0);
   if (total <= 0) return;
-  const colors = ['#7690a6', '#ef654a', d.net_profit >= 0 ? '#22c55e' : '#ef4444'];
+  const colors = ['#637d95', '#ef654a', d.net_profit >= 0 ? '#22c55e' : '#ef4444'];
   pnlChart = new ChartCtor(canvas, {
     type: 'pie',
-    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: '#0c1b2d', borderWidth: 3, hoverOffset: 5 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#a9bfd2', usePointStyle: true, padding: 14, generateLabels: (chart: any) => chart.data.labels.map((label: string, index: number) => ({ text: `${label} · ${((Number(chart.data.datasets[0].data[index]) / total) * 100).toFixed(1)}%`, fillStyle: colors[index], strokeStyle: colors[index], index })) } }, tooltip: { callbacks: { label: (context: any) => ` ${context.label}: ₱${Number(context.raw || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${((Number(context.raw || 0) / total) * 100).toFixed(1)}%)` } } } }
+    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: '#ffffff', borderWidth: 3, hoverOffset: 5 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#385671', usePointStyle: true, padding: 14, generateLabels: (chart: any) => chart.data.labels.map((label: string, index: number) => ({ text: `${label} · ${((Number(chart.data.datasets[0].data[index]) / total) * 100).toFixed(1)}%`, fillStyle: colors[index], strokeStyle: colors[index], index })) } }, tooltip: { callbacks: { label: (context: any) => ` ${context.label}: ₱${Number(context.raw || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${((Number(context.raw || 0) / total) * 100).toFixed(1)}%)` } } } }
   });
 }
 

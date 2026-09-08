@@ -89,15 +89,15 @@ export async function renderDashboard(): Promise<string> {
         data: {
           labels: JSON.parse(revLabels),
           datasets: [
-            { label: 'Revenue', data: JSON.parse(revData), backgroundColor: g, borderColor: '#f0b429', borderWidth: 2, borderRadius: 4, borderSkipped: false, order: 2 },
-            { label: 'Profit', data: JSON.parse(profitData), type: 'line', fill: true, backgroundColor: g2, borderColor: '#22c55e', borderWidth: 2.5, pointBackgroundColor: '#22c55e', pointBorderColor: '#1a1b1e', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6, tension: 0.3, order: 1 },
+            { label: 'Revenue', data: JSON.parse(revData), backgroundColor: g, borderColor: '#f28c28', borderWidth: 2, borderRadius: 4, borderSkipped: false, order: 2 },
+            { label: 'Profit', data: JSON.parse(profitData), type: 'line', fill: true, backgroundColor: g2, borderColor: '#22c55e', borderWidth: 2.5, pointBackgroundColor: '#22c55e', pointBorderColor: '#ffffff', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6, tension: 0.3, order: 1 },
           ]
         },
         options: {
           responsive: true, maintainAspectRatio: false,
           interaction: { intersect: false, mode: 'index' },
-          plugins: { legend: { position: 'top', align: 'end', labels: { color: '#a09e9a', padding: 16, font: { size: 10, weight: '600' }, usePointStyle: true, pointStyle: 'circle' } } },
-          scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b6a66', font: { size: 10 }, callback: (v: any) => '₱' + v.toFixed(0) } }, x: { grid: { display: false }, ticks: { color: '#6b6a66', font: { size: 9 } } } }
+          plugins: { legend: { position: 'top', align: 'end', labels: { color: '#385671', padding: 16, font: { size: 10, weight: '600' }, usePointStyle: true, pointStyle: 'circle' } } },
+          scales: { y: { beginAtZero: true, grid: { color: 'rgba(11,41,69,0.10)' }, ticks: { color: '#637d95', font: { size: 10 }, callback: (v: any) => '₱' + v.toFixed(0) } }, x: { grid: { display: false }, ticks: { color: '#637d95', font: { size: 9 } } } }
         }
       }));
     }
@@ -106,8 +106,8 @@ export async function renderDashboard(): Promise<string> {
     if (ctx2) {
       chartInstances.push(new (window as any).Chart(ctx2, {
         type: 'doughnut',
-        data: { labels: ['Pending', 'Partial', 'Paid'], datasets: [{ data: [pendingCount, partialCount, paidCount], backgroundColor: ['#ef4444', '#f0b429', '#22c55e'], borderColor: '#1a1b1e', borderWidth: 3, hoverOffset: 8 }] },
-        options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { color: '#a09e9a', padding: 16, font: { size: 11 }, usePointStyle: true, pointStyle: 'circle' } } } }
+        data: { labels: ['Pending', 'Partial', 'Paid'], datasets: [{ data: [pendingCount, partialCount, paidCount], backgroundColor: ['#ef4444', '#f0b429', '#22c55e'], borderColor: '#ffffff', borderWidth: 3, hoverOffset: 8 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { color: '#385671', padding: 16, font: { size: 11 }, usePointStyle: true, pointStyle: 'circle' } } } }
       }));
     }
 
@@ -116,10 +116,10 @@ export async function renderDashboard(): Promise<string> {
       chartInstances.push(new (window as any).Chart(ctx3, {
         type: 'bar',
         data: { labels: JSON.parse(topMatLabels), datasets: [
-          { label: 'Revenue', data: JSON.parse(topMatRevenue), backgroundColor: 'rgba(240, 180, 41, 0.7)', borderColor: '#f0b429', borderWidth: 1, borderRadius: 3 },
+          { label: 'Revenue', data: JSON.parse(topMatRevenue), backgroundColor: 'rgba(242, 140, 40, 0.7)', borderColor: '#f28c28', borderWidth: 1, borderRadius: 3 },
           { label: 'Profit', data: JSON.parse(topMatProfit), backgroundColor: 'rgba(34, 197, 94, 0.7)', borderColor: '#22c55e', borderWidth: 1, borderRadius: 3 },
         ]},
-        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', align: 'end', labels: { color: '#a09e9a', padding: 12, font: { size: 10 }, usePointStyle: true, pointStyle: 'rectRounded' } } }, scales: { x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b6a66', font: { size: 9 }, callback: (v: any) => '₱' + v.toFixed(0) } }, y: { grid: { display: false }, ticks: { color: '#a09e9a', font: { size: 10 } } } } }
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', align: 'end', labels: { color: '#385671', padding: 12, font: { size: 10 }, usePointStyle: true, pointStyle: 'rectRounded' } } }, scales: { x: { beginAtZero: true, grid: { color: 'rgba(11,41,69,0.10)' }, ticks: { color: '#637d95', font: { size: 9 }, callback: (v: any) => '₱' + v.toFixed(0) } }, y: { grid: { display: false }, ticks: { color: '#385671', font: { size: 10 } } } } }
       }));
     }
 
@@ -129,7 +129,7 @@ export async function renderDashboard(): Promise<string> {
       chartInstances.push(new (window as any).Chart(ctx4, {
         type: 'bar',
         data: { labels: JSON.parse(marginLabels), datasets: [{ label: 'Margin %', data: JSON.parse(marginData), backgroundColor: barColors, borderColor: barColors.map((c: string) => c.replace('0.7', '1')), borderWidth: 1, borderRadius: 3 }] },
-        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b6a66', font: { size: 9 }, callback: (v: any) => v + '%' } }, y: { grid: { display: false }, ticks: { color: '#a09e9a', font: { size: 10 } } } } }
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, max: 100, grid: { color: 'rgba(11,41,69,0.10)' }, ticks: { color: '#637d95', font: { size: 9 }, callback: (v: any) => v + '%' } }, y: { grid: { display: false }, ticks: { color: '#385671', font: { size: 10 } } } } }
       }));
     }
 
@@ -141,21 +141,21 @@ export async function renderDashboard(): Promise<string> {
           { label: 'Current Stock', data: JSON.parse(lowStockData), backgroundColor: 'rgba(245, 158, 11, 0.7)', borderColor: '#f59e0b', borderWidth: 1, borderRadius: 3 },
           { label: 'Reorder Point', data: JSON.parse(lowReorderData), backgroundColor: 'rgba(239, 68, 68, 0.5)', borderColor: '#ef4444', borderWidth: 1, borderRadius: 3 },
         ]},
-        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#a09e9a', padding: 16, font: { size: 11 }, usePointStyle: true, pointStyle: 'rectRounded' } } }, scales: { x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b6a66', font: { size: 10 } } }, y: { grid: { display: false }, ticks: { color: '#a09e9a', font: { size: 10 } } } } }
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#385671', padding: 16, font: { size: 11 }, usePointStyle: true, pointStyle: 'rectRounded' } } }, scales: { x: { beginAtZero: true, grid: { color: 'rgba(11,41,69,0.10)' }, ticks: { color: '#637d95', font: { size: 10 } } }, y: { grid: { display: false }, ticks: { color: '#385671', font: { size: 10 } } } } }
       }));
     }
 
     const ctx6 = (document.getElementById('chart-expenses') as HTMLCanvasElement)?.getContext('2d');
     if (ctx6 && (analytics.expenseByCategory || []).length) {
-      chartInstances.push(new (window as any).Chart(ctx6, { type: 'doughnut', data: { labels: JSON.parse(expenseLabels), datasets: [{ data: JSON.parse(expenseData), backgroundColor: ['#ef4444','#8b5cf6','#06b6d4','#22c55e','#f0b429','#94a3b8','#ec4899'], borderColor: '#1a1b1e', borderWidth: 3 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'right', labels: { color: '#a09e9a', font: { size: 10 }, usePointStyle: true } } } } }));
+      chartInstances.push(new (window as any).Chart(ctx6, { type: 'doughnut', data: { labels: JSON.parse(expenseLabels), datasets: [{ data: JSON.parse(expenseData), backgroundColor: ['#ef4444','#8b5cf6','#06b6d4','#22c55e','#f0b429','#94a3b8','#ec4899'], borderColor: '#ffffff', borderWidth: 3 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'right', labels: { color: '#385671', font: { size: 10 }, usePointStyle: true } } } } }));
     }
     const ctx7 = (document.getElementById('chart-pnl') as HTMLCanvasElement)?.getContext('2d');
     if (ctx7) {
-      chartInstances.push(new (window as any).Chart(ctx7, { type: 'line', data: { labels: JSON.parse(pnlLabels), datasets: [{ label: 'Income', data: JSON.parse(pnlIncome), borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,.12)', fill: true, tension: .3 }, { label: 'Expenses', data: JSON.parse(pnlExpenses), borderColor: '#ef654a', backgroundColor: 'rgba(239,101,74,.08)', fill: true, tension: .3 }] }, options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' }, scales: { y: { beginAtZero: true, ticks: { color: '#6b6a66', callback: (v: any) => '₱' + v.toFixed(0) }, grid: { color: 'rgba(255,255,255,.05)' } }, x: { ticks: { color: '#6b6a66' }, grid: { display: false } } }, plugins: { legend: { position: 'bottom', labels: { color: '#a09e9a', usePointStyle: true } } } } }));
+      chartInstances.push(new (window as any).Chart(ctx7, { type: 'line', data: { labels: JSON.parse(pnlLabels), datasets: [{ label: 'Income', data: JSON.parse(pnlIncome), borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,.12)', fill: true, tension: .3 }, { label: 'Expenses', data: JSON.parse(pnlExpenses), borderColor: '#ef654a', backgroundColor: 'rgba(239,101,74,.08)', fill: true, tension: .3 }] }, options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' }, scales: { y: { beginAtZero: true, ticks: { color: '#637d95', callback: (v: any) => '₱' + v.toFixed(0) }, grid: { color: 'rgba(11,41,69,.10)' } }, x: { ticks: { color: '#637d95' }, grid: { display: false } } }, plugins: { legend: { position: 'bottom', labels: { color: '#385671', usePointStyle: true } } } } }));
     }
     const ctx8 = (document.getElementById('chart-payment-methods') as HTMLCanvasElement)?.getContext('2d');
     if (ctx8 && (analytics.paymentMethodTotals || []).length) {
-      chartInstances.push(new (window as any).Chart(ctx8, { type: 'bar', data: { labels: JSON.parse(methodLabels), datasets: [{ label: 'Collected', data: JSON.parse(methodData), backgroundColor: ['#f0b429','#06b6d4','#8b5cf6','#22c55e','#94a3b8'], borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#6b6a66', callback: (v: any) => '₱' + v.toFixed(0) }, grid: { color: 'rgba(255,255,255,.05)' } }, x: { ticks: { color: '#6b6a66' }, grid: { display: false } } }, plugins: { legend: { display: false } } } }));
+      chartInstances.push(new (window as any).Chart(ctx8, { type: 'bar', data: { labels: JSON.parse(methodLabels), datasets: [{ label: 'Collected', data: JSON.parse(methodData), backgroundColor: ['#f28c28','#06b6d4','#8b5cf6','#22c55e','#94a3b8'], borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#637d95', callback: (v: any) => '₱' + v.toFixed(0) }, grid: { color: 'rgba(11,41,69,.10)' } }, x: { ticks: { color: '#637d95' }, grid: { display: false } } }, plugins: { legend: { display: false } } } }));
     }
   }, 50);
 

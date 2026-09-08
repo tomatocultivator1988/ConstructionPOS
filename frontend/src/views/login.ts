@@ -26,8 +26,8 @@ export function showLogin() {
         <div class="login-brand">
           <svg width="48" height="48" viewBox="0 0 40 40" fill="none">
             <rect x="8" y="20" width="24" height="14" rx="2" fill="#f0b429"/>
-            <rect x="12" y="24" width="6" height="6" rx="1" fill="#1a1b1e"/>
-            <rect x="22" y="24" width="6" height="6" rx="1" fill="#1a1b1e"/>
+            <rect x="12" y="24" width="6" height="6" rx="1" fill="#0b2945"/>
+            <rect x="22" y="24" width="6" height="6" rx="1" fill="#0b2945"/>
             <path d="M6 20 L20 8 L34 20" stroke="#f0b429" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
             <rect x="18" y="14" width="4" height="6" rx="1" fill="#f0b429"/>
           </svg>
