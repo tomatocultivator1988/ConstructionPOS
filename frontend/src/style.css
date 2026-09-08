@@ -556,6 +556,35 @@ tr.low-stock:hover { background: rgba(245, 158, 11, 0.2); }
 .line-item input.error { border-color: var(--c-danger); box-shadow: 0 0 0 2px rgba(239,68,68,0.15); }
 
 /* ── Settings card ── */
+.attendance-controls { display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap; margin-bottom:var(--space-4); }
+.attendance-controls label { color:var(--c-text-secondary); font-size:var(--fs-sm); }
+.attendance-controls select { min-width:190px; }
+.attendance-controls strong { min-width:150px; text-align:center; color:var(--c-text); }
+.attendance-summary { display:flex; gap:var(--space-4); margin-bottom:var(--space-4); font-size:var(--fs-sm); }
+.attendance-summary-present { color:var(--c-success); }
+.attendance-summary-absent { color:var(--c-danger); }
+.attendance-weekdays, .attendance-calendar { display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:8px; }
+.attendance-weekdays { margin-bottom:8px; color:var(--c-text-muted); font-size:var(--fs-xs); text-align:center; }
+.attendance-day { min-height:84px; padding:10px; border:1px solid var(--c-border); border-radius:var(--radius-md); background:var(--c-surface); display:flex; flex-direction:column; gap:7px; }
+.attendance-day strong { color:var(--c-text); }
+.attendance-day span { font-size:var(--fs-xs); color:var(--c-text-muted); }
+.attendance-empty { visibility:hidden; }
+.attendance-present { border-color:var(--c-success); background:var(--c-success-bg); }
+.attendance-absent { border-color:var(--c-danger); background:var(--c-danger-bg); }
+.attendance-day-actions { display:flex; gap:5px; }
+.attendance-status-btn { width:28px; height:26px; padding:0; border:1px solid var(--c-border); border-radius:6px; background:var(--c-bg); color:var(--c-text-muted); cursor:pointer; font-size:var(--fs-xs); font-weight:700; }
+.attendance-status-btn:hover, .attendance-status-btn.active { color:#fff; background:var(--c-primary); border-color:var(--c-primary); }
+.attendance-present .attendance-status-btn.active { background:var(--c-success); border-color:var(--c-success); }
+.attendance-absent .attendance-status-btn.active { background:var(--c-danger); border-color:var(--c-danger); }
+@media (max-width: 640px) {
+  .attendance-controls { gap:8px; }
+  .attendance-controls select { width:100%; }
+  .attendance-controls strong { flex:1; min-width:0; }
+  .attendance-day { min-height:70px; padding:7px; }
+  .attendance-day-actions { gap:3px; }
+  .attendance-status-btn { width:24px; height:23px; }
+  .attendance-weekdays, .attendance-calendar { gap:4px; }
+}
 .settings-card {
   background: var(--c-surface);
   border: 1px solid var(--c-border);

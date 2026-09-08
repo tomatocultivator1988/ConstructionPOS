@@ -4,6 +4,8 @@ import { showToast, showConfirmModal, showModal, closeModal } from '../lib/helpe
 import { printShift } from './receipt';
 
 let settingsSubTab = 'general';
+let attendanceMonth = new Date().toISOString().slice(0, 7);
+let attendanceStaffId = '';
 
 export async function renderSettings(): Promise<string> {
   const isAdm = isAdmin();
@@ -15,6 +17,7 @@ export async function renderSettings(): Promise<string> {
     <div style="display:flex;gap:2px;background:var(--c-bg);padding:3px;border-radius:var(--radius-md);margin-bottom:var(--space-5);width:fit-content">
       <button class="nav-btn ${settingsSubTab === 'general' ? 'active' : ''}" onclick="switchSettingsTab('general')">General</button>
       ${isAdm ? `<button class="nav-btn ${settingsSubTab === 'users' ? 'active' : ''}" onclick="switchSettingsTab('users')">Staff</button>` : ''}
+      ${isAdm ? `<button class="nav-btn ${settingsSubTab === 'attendance' ? 'active' : ''}" onclick="switchSettingsTab('attendance')">Attendance</button>` : ''}
       ${isAdm ? `<button class="nav-btn ${settingsSubTab === 'audit' ? 'active' : ''}" onclick="switchSettingsTab('audit')">Audit Log</button>` : ''}
       <button class="nav-btn ${settingsSubTab === 'shift' ? 'active' : ''}" onclick="switchSettingsTab('shift')">Cashier Shift</button>
     </div>
@@ -28,8 +31,60 @@ export async function switchSettingsTab(tab: string) {
   if (!el) return;
   if (tab === 'general') el.innerHTML = await loadGeneralSettings();
   else if (tab === 'users') el.innerHTML = await loadUsersTab();
+  else if (tab === 'attendance') el.innerHTML = await loadAttendanceTab();
   else if (tab === 'audit') el.innerHTML = await loadAuditTab();
   else if (tab === 'shift') el.innerHTML = await loadShiftTab();
+}
+
+function monthLabel(month: string) {
+  const [year, monthNumber] = month.split('-').map(Number);
+  return new Date(year, monthNumber - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+}
+
+async function loadAttendanceTab() {
+  const initial = await apiGet<any>(`/attendance?month=${encodeURIComponent(attendanceMonth)}&user_id=${encodeURIComponent(attendanceStaffId)}`);
+  const staff = initial.staff || [];
+  if (!attendanceStaffId || !staff.some((person: any) => person.id === attendanceStaffId)) attendanceStaffId = staff[0]?.id || '';
+  const data = attendanceStaffId === (initial.records?.[0]?.user_id || attendanceStaffId)
+    ? initial
+    : await apiGet<any>(`/attendance?month=${encodeURIComponent(attendanceMonth)}&user_id=${encodeURIComponent(attendanceStaffId)}`);
+  const records = new Map((data.records || []).map((record: any) => [record.attendance_date, record.status]));
+  const [year, monthNumber] = attendanceMonth.split('-').map(Number);
+  const days = new Date(year, monthNumber, 0).getDate();
+  const firstDay = new Date(year, monthNumber - 1, 1).getDay();
+  const present = [...records.values()].filter(status => status === 'present').length;
+  const absent = [...records.values()].filter(status => status === 'absent').length;
+  const cells = [];
+  for (let i = 0; i < firstDay; i += 1) cells.push('<div class="attendance-day attendance-empty"></div>');
+  for (let day = 1; day <= days; day += 1) {
+    const date = `${attendanceMonth}-${String(day).padStart(2, '0')}`;
+    const status = records.get(date) || '';
+    cells.push(`<div class="attendance-day ${status ? `attendance-${status}` : ''}"><strong>${day}</strong><div class="attendance-day-actions"><button class="attendance-status-btn ${status === 'present' ? 'active' : ''}" title="Mark Present" onclick="setAttendanceStatus('${attendanceStaffId}','${date}','present')">P</button><button class="attendance-status-btn ${status === 'absent' ? 'active' : ''}" title="Mark Absent" onclick="setAttendanceStatus('${attendanceStaffId}','${date}','absent')">A</button></div><span>${status ? status[0].toUpperCase() + status.slice(1) : '—'}</span></div>`);
+  }
+  return `<div class="settings-card attendance-card"><div class="page-header" style="margin-bottom:var(--space-4)"><div><h3>Attendance</h3><p class="card-sub">Admin-only monthly attendance. This is independent from cashier shifts and login.</p></div></div><div class="attendance-controls"><label for="attendance-staff">Staff member</label><select id="attendance-staff" onchange="selectAttendanceStaff(this.value)"><option value="">Select staff...</option>${staff.map((person: any) => `<option value="${esc(person.id)}" ${person.id === attendanceStaffId ? 'selected' : ''}>${esc(person.username)}</option>`).join('')}</select><button class="btn btn-sm" onclick="changeAttendanceMonth(-1)">‹ Previous</button><strong>${monthLabel(attendanceMonth)}</strong><button class="btn btn-sm" onclick="changeAttendanceMonth(1)">Next ›</button></div>${attendanceStaffId ? `<div class="attendance-summary"><span class="attendance-summary-present">Present: <strong>${present}</strong></span><span class="attendance-summary-absent">Absent: <strong>${absent}</strong></span></div><div class="attendance-weekdays">${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day => `<strong>${day}</strong>`).join('')}</div><div class="attendance-calendar">${cells.join('')}</div><p class="field-help">Click P or A on any date to update the record.</p>` : '<p class="empty-state">Create a staff account first to manage attendance.</p>'}</div>`;
+}
+
+export async function selectAttendanceStaff(id: string) {
+  attendanceStaffId = id;
+  const el = document.getElementById('settings-content');
+  if (el) el.innerHTML = await loadAttendanceTab();
+}
+
+export async function changeAttendanceMonth(delta: number) {
+  const [year, month] = attendanceMonth.split('-').map(Number);
+  const next = new Date(year, month - 1 + delta, 1);
+  attendanceMonth = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`;
+  const el = document.getElementById('settings-content');
+  if (el) el.innerHTML = await loadAttendanceTab();
+}
+
+export async function setAttendanceStatus(userId: string, date: string, status: string) {
+  try {
+    await apiPut('/attendance', { user_id: userId, date, status });
+    const el = document.getElementById('settings-content');
+    if (el) el.innerHTML = await loadAttendanceTab();
+    showToast(`Marked ${status}`, 'success');
+  } catch (e: any) { showToast(e.message || 'Unable to update attendance'); }
 }
 
 async function loadShiftTab() {

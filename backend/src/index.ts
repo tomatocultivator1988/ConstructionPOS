@@ -22,6 +22,7 @@ import auditRoutes from './routes/audit';
 import seedRoutes from './routes/seed';
 import shiftRoutes from './routes/shifts';
 import catalogRoutes from './routes/catalog';
+import attendanceRoutes from './routes/attendance';
 import { authMiddleware } from './lib/auth';
 
 const app = express();
@@ -97,6 +98,7 @@ app.use('/api/audit-log', auditRoutes);
 app.use('/api/seed', seedRoutes);
 app.use('/api/shifts', shiftRoutes);
 app.use('/api/catalog', catalogRoutes);
+app.use('/api/attendance', attendanceRoutes);
 
 app.get('/api/health', async (_req, res) => {
   try {

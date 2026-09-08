@@ -209,6 +209,17 @@ async function initTables() {
       created_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS attendance (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      attendance_date TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('present','absent')),
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE (user_id, attendance_date),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
     CREATE TABLE IF NOT EXISTS audit_log (
       id TEXT PRIMARY KEY,
       user_id TEXT,
@@ -411,6 +422,7 @@ async function migrateSchema() {
   await db.exec('CREATE INDEX IF NOT EXISTS idx_customers_tin ON customers(tin)');
   await db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_materials_barcode ON materials(barcode) WHERE barcode IS NOT NULL AND barcode <> \'\'');
   await db.exec('CREATE INDEX IF NOT EXISTS idx_shifts_status ON cashier_shifts(status)');
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_attendance_month ON attendance(attendance_date, user_id)');
   const shiftCols = await db.prepare('PRAGMA table_info(cashier_shifts)').all() as any[];
   if (!shiftCols.some((c: any) => c.name === 'opened_by')) await db.exec('ALTER TABLE cashier_shifts ADD COLUMN opened_by TEXT');
   if (!shiftCols.some((c: any) => c.name === 'closed_by')) await db.exec('ALTER TABLE cashier_shifts ADD COLUMN closed_by TEXT');
