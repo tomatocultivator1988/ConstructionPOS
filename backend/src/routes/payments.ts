@@ -19,7 +19,9 @@ router.get('/receipts', async (req: Request, res: Response) => {
   if (to) { conditions.push('date(p.payment_date) <= ?'); params.push(to); }
   const where = conditions.join(' AND ');
   const total = Number((await db.prepare(`SELECT COUNT(*) total FROM payments p JOIN invoices i ON i.id=p.invoice_id LEFT JOIN customers c ON c.id=i.customer_id WHERE ${where}`).get(...params) as any).total);
-  const data = await db.prepare(`SELECT p.id, p.invoice_id, p.payment_date, p.amount, p.method, p.notes, i.invoice_number, COALESCE(c.name,'Walk-in') customer_name
+  const data = await db.prepare(`SELECT p.id, p.invoice_id, p.payment_date, p.amount, p.method, p.notes, i.invoice_number, i.status,
+    COALESCE(c.name,'Walk-in') customer_name,
+    COALESCE((SELECT SUM(amount) FROM payments WHERE invoice_id=i.id),0) - COALESCE((SELECT SUM(amount) FROM refunds WHERE invoice_id=i.id),0) refundable_amount
     FROM payments p JOIN invoices i ON i.id=p.invoice_id LEFT JOIN customers c ON c.id=i.customer_id WHERE ${where}
     ORDER BY p.payment_date DESC LIMIT ? OFFSET ?`).all(...params, pageSize, (page - 1) * pageSize);
   res.json({ data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
