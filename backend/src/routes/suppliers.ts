@@ -32,9 +32,12 @@ function validateSupplier(body: any, existing?: any) {
   };
 }
 
-router.get('/', async (_req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   const db = getDb();
-  const suppliers = await db.prepare('SELECT * FROM suppliers ORDER BY name ASC').all();
+  const conditions: string[] = []; const params: any[] = [];
+  if (typeof req.query.from === 'string' && req.query.from) { conditions.push('date(created_at) >= ?'); params.push(req.query.from); }
+  if (typeof req.query.to === 'string' && req.query.to) { conditions.push('date(created_at) <= ?'); params.push(req.query.to); }
+  const suppliers = await db.prepare(`SELECT * FROM suppliers${conditions.length ? ` WHERE ${conditions.join(' AND ')}` : ''} ORDER BY name ASC`).all(...params);
   res.json(suppliers);
 });
 

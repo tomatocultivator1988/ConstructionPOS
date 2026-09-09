@@ -3,6 +3,7 @@ import { esc, val, setErr, clearErr, disableBtn, fmtDate, fmtPeso } from '../lib
 import { showModal, closeModal, showToast, showConfirmModal } from '../lib/helpers';
 import { loadView } from '../lib/router';
 import type { Expense } from '../lib/types';
+import { showExportPeriodModal, exportTable, type ExportPeriod } from '../lib/export';
 
 let EXPENSE_CATEGORIES = [
   'Rent', 'Utilities', 'Labor/Salary', 'Delivery/Transport',
@@ -42,7 +43,7 @@ export async function renderExpenses(): Promise<string> {
   return `
     <div class="page-header">
       <h2>Expenses</h2>
-      <button class="btn btn-primary" onclick="showExpenseModal()">+ Add Expense</button>
+      <div style="display:flex;gap:var(--space-2);flex-wrap:wrap"><button class="btn" onclick="exportExpenses()">Export</button><button class="btn btn-primary" onclick="showExpenseModal()">+ Add Expense</button></div>
     </div>
     <div class="chart-grid" style="margin-bottom:var(--space-4)">
       <div class="dashboard-card card-info">
@@ -79,6 +80,17 @@ export async function renderExpenses(): Promise<string> {
       </table>
     </div>
   `;
+}
+
+export function exportExpenses() {
+  showExportPeriodModal('Expenses', async (period: ExportPeriod, format) => {
+    const [rows, summary] = await Promise.all([
+      apiGet<Expense[]>(`/expenses?from=${period.from}&to=${period.to}`),
+      apiGet<{ category: string; total: number }[]>(`/expenses/summary?from=${period.from}&to=${period.to}`),
+    ]);
+    const data = rows.map(e => [fmtDate(e.expense_date), e.category, e.description || '—', e.vendor || '—', e.payment_method || 'cash', fmtPeso(e.amount)]);
+    exportTable('Expenses', period, ['Date', 'Category', 'Description', 'Vendor / Payee', 'Payment', 'Amount'], data, format, `Total expenses: ${fmtPeso(rows.reduce((sum, row) => sum + Number(row.amount || 0), 0))} · ${summary.length} categories`);
+  });
 }
 
 export function showExpenseModal(data?: Expense) {

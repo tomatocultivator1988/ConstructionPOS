@@ -4,6 +4,7 @@ import { showModal, closeModal, showToast, showConfirmModal } from '../lib/helpe
 import { loadView } from '../lib/router';
 import { showReceiptPreview } from './receipt';
 import type { Invoice, Material } from '../lib/types';
+import { showExportPeriodModal, exportTable, type ExportPeriod } from '../lib/export';
 
 let invoicePage = 1;
 const INVOICE_PAGE_SIZE = 15;
@@ -129,7 +130,7 @@ export async function renderInvoices(): Promise<string> {
   const total = Math.round((cartTotal + tax) * 100) / 100;
   (window as any).__posTotal = total;
   return `<div class="pos-page">
-    <div class="pos-header"><div><div class="pos-kicker">Jeg Enterprises POS</div><h2>Point of Sale</h2></div></div>
+    <div class="pos-header"><div><div class="pos-kicker">Jeg Enterprises POS</div><h2>Point of Sale</h2></div><button class="btn" onclick="exportSalesHistory()">Export Sales History</button></div>
     <div class="pos-layout">
       <aside class="pos-categories"><div class="pos-panel-title">Categories</div><button class="pos-category ${!posCategory ? 'active' : ''}" onclick="setPOSCategory('')">All Categories</button>${categoryButtons}</aside>
       <section class="pos-products"><div class="pos-search"><input id="pos-search" type="search" value="${esc(posSearch)}" placeholder="Search material name, category, or unit..." oninput="filterPOSMaterials(this.value)" /><button class="btn btn-sm pos-camera-btn" onclick="startPOSCameraScan()" title="Scan barcode with camera">Scan Barcode</button><span>${filteredMaterials.length} item${filteredMaterials.length === 1 ? '' : 's'}</span></div><div class="pos-product-grid">${filteredMaterials.length ? filteredMaterials.map((m: Material) => `<button class="pos-product ${Number(m.stock) <= Number(m.reorder_point) ? 'low-stock' : ''}" onclick="addPOSItem('${m.id}')"><span class="pos-product-name">${esc(m.name)}</span><span class="pos-product-meta">${esc(m.unit)} · ${m.stock} in stock</span><strong>${fmtPeso(m.price_per_unit)}</strong></button>`).join('') : '<div class="pos-empty">No materials match your search.</div>'}</div></section>
@@ -142,6 +143,14 @@ export async function renderInvoices(): Promise<string> {
     </div>
     <details class="pos-history"><summary>Sales History <span>${totalInvoices} invoice${totalInvoices === 1 ? '' : 's'}</span></summary><div class="table-wrap"><table><thead><tr><th>#</th><th>Customer</th><th>Total</th><th>Status</th><th>Issued</th><th>Delivery Person</th><th class="actions">Actions</th></tr></thead><tbody>${invoiceData.length ? invoiceData.map((inv: Invoice) => `<tr><td data-label="#" style="font-weight:600">${esc(inv.invoice_number)}</td><td data-label="Customer">${esc(inv.customer_name)}</td><td data-label="Total" style="font-family:var(--ff-mono);font-weight:600">${fmtPeso(inv.total)}</td><td data-label="Status"><span class="status-badge ${inv.status}">${inv.status}</span></td><td data-label="Issued">${fmtDate(inv.issued_date)}</td><td data-label="Delivery Person"><span class="delivery-value">${esc(inv.delivery_person || 'Not assigned')}</span><button class="btn btn-sm delivery-edit-btn" onclick="showDeliveryModal('${inv.id}')">${inv.delivery_person ? 'Edit' : 'Assign'}</button></td><td data-label="" class="actions"><button class="btn btn-success btn-sm" onclick="showInvoiceDetail('${inv.id}')">View</button><button class="btn btn-danger btn-sm" onclick="delInvoice('${inv.id}')">Delete</button></td></tr>`).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--c-text-muted);padding:2rem">No sales yet</td></tr>'}</tbody></table></div>${totalInvoices > INVOICE_PAGE_SIZE ? `<div class="pagination"><span>Showing ${(invoicePage-1)*INVOICE_PAGE_SIZE+1}–${Math.min(invoicePage*INVOICE_PAGE_SIZE, totalInvoices)} of ${totalInvoices}</span><button class="btn btn-sm" ${invoicePage===1?'disabled':''} onclick="changeInvoicePage(${invoicePage-1})">Previous</button><strong>Page ${invoicePage} of ${Math.ceil(totalInvoices/INVOICE_PAGE_SIZE)}</strong><button class="btn btn-sm" ${invoicePage>=Math.ceil(totalInvoices/INVOICE_PAGE_SIZE)?'disabled':''} onclick="changeInvoicePage(${invoicePage+1})">Next</button></div>` : ''}</details>
   </div>`;
+}
+
+export function exportSalesHistory() {
+  showExportPeriodModal('Sales History', async (period: ExportPeriod, format) => {
+    const result = await apiGet<any>(`/invoices?export=1&from=${period.from}&to=${period.to}&page=1&pageSize=100`);
+    const rows = (result.data || []).map((inv: any) => [inv.invoice_number, inv.customer_name, fmtDate(inv.issued_date), inv.status, fmtPeso(inv.adjusted_total ?? inv.total), fmtPeso(inv.net_paid || 0), inv.delivery_person || '—']);
+    exportTable('Sales History', period, ['Invoice', 'Buyer', 'Issued', 'Status', 'Total', 'Paid', 'Delivery Person'], rows, format, `${rows.length} sale${rows.length === 1 ? '' : 's'}`);
+  });
 }
 
 export function changeInvoicePage(page: number) { invoicePage = Math.max(1, page); loadView('invoices'); }

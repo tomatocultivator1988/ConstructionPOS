@@ -4,6 +4,7 @@ import { showModal, closeModal, showToast, showConfirmModal } from '../lib/helpe
 import { loadView } from '../lib/router';
 import { renderPurchaseOrders } from './purchase-orders';
 import type { Supplier } from '../lib/types';
+import { showExportPeriodModal, exportTable, type ExportPeriod } from '../lib/export';
 
 let supplierTab: 'suppliers' | 'purchase-orders' = 'suppliers';
 
@@ -20,7 +21,7 @@ export async function renderSuppliers(): Promise<string> {
   return `
     <div class="page-header">
       <h2>Suppliers</h2>
-      <button class="btn btn-primary" onclick="showSupplierModal()">+ Add Supplier</button>
+      <div style="display:flex;gap:var(--space-2);flex-wrap:wrap"><button class="btn" onclick="exportSuppliers()">Export</button><button class="btn btn-primary" onclick="showSupplierModal()">+ Add Supplier</button></div>
     </div>
     <div class="table-wrap">
       <table>
@@ -43,6 +44,14 @@ export async function renderSuppliers(): Promise<string> {
       </table>
     </div>
   `;
+}
+
+export function exportSuppliers() {
+  showExportPeriodModal('Suppliers', async (period: ExportPeriod, format) => {
+    const suppliers = await apiGet<Supplier[]>(`/suppliers?from=${period.from}&to=${period.to}`);
+    const rows = suppliers.map(s => [s.name, s.contact_person || '—', s.phone || '—', s.address || '—', s.notes || '—']);
+    exportTable('Supplier Directory', period, ['Name', 'Contact Person', 'Phone', 'Address', 'Notes'], rows, format, `${suppliers.length} supplier record${suppliers.length === 1 ? '' : 's'}`);
+  });
 }
 
 export function showSupplierModal(data?: Supplier) {

@@ -27,6 +27,9 @@ async function refreshInvoiceStatus(db: ReturnType<typeof getDb>, invoiceId: str
 
 router.get('/', async (req: Request, res: Response) => {
   const db = getDb();
+  const conditions: string[] = []; const params: any[] = [];
+  if (typeof req.query.from === 'string' && req.query.from) { conditions.push('date(i.issued_date) >= ?'); params.push(req.query.from); }
+  if (typeof req.query.to === 'string' && req.query.to) { conditions.push('date(i.issued_date) <= ?'); params.push(req.query.to); }
   const baseQuery = `
     SELECT i.*, COALESCE(NULLIF(i.credit_account_name,''), c.name, 'Walk-in') AS customer_name, c.address AS customer_address, c.tin AS customer_tin,
       i.total - COALESCE((SELECT SUM(amount) FROM credit_memos cm WHERE cm.invoice_id=i.id AND cm.status='issued'),0) - COALESCE((SELECT SUM(total_credit) FROM invoice_returns ir WHERE ir.invoice_id=i.id),0) AS adjusted_total,
@@ -34,22 +37,26 @@ router.get('/', async (req: Request, res: Response) => {
       COALESCE((SELECT SUM(amount) FROM payments p WHERE p.invoice_id=i.id),0) - COALESCE((SELECT SUM(amount) FROM refunds r WHERE r.invoice_id=i.id),0) AS net_paid
     FROM invoices i
     LEFT JOIN customers c ON c.id = i.customer_id
+    WHERE ${conditions.join(' AND ')}
     ORDER BY i.created_at DESC`;
   if (req.query.page !== undefined) {
     const page = Math.max(1, Number(req.query.page) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || 15));
-    const total = Number((await db.prepare('SELECT COUNT(*) total FROM invoices').get() as any).total);
-    const data = await db.prepare(`${baseQuery} LIMIT ? OFFSET ?`).all(pageSize, (page - 1) * pageSize);
+    const total = Number((await db.prepare(`SELECT COUNT(*) total FROM invoices i WHERE ${conditions.join(' AND ')}`).get(...params) as any).total);
+    const data = req.query.export === '1' ? await db.prepare(baseQuery).all(...params) : await db.prepare(`${baseQuery} LIMIT ? OFFSET ?`).all(...params, pageSize, (page - 1) * pageSize);
     res.json({ data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
     return;
   }
-  res.json(await db.prepare(baseQuery).all());
+  res.json(await db.prepare(baseQuery).all(...params));
 });
 
 router.get('/receivables', async (req: Request, res: Response) => {
   const db = getDb();
   const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
   const status = typeof req.query.status === 'string' ? req.query.status : 'all';
+  const from = typeof req.query.from === 'string' ? req.query.from : '';
+  const to = typeof req.query.to === 'string' ? req.query.to : '';
+  const exportMode = req.query.export === '1';
   const page = Math.max(1, Number(req.query.page) || 1);
   const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || 15));
   const balance = `i.total - COALESCE((SELECT SUM(amount) FROM credit_memos cm WHERE cm.invoice_id=i.id AND cm.status='issued'),0) - COALESCE((SELECT SUM(total_credit) FROM invoice_returns ir WHERE ir.invoice_id=i.id),0) - (COALESCE((SELECT SUM(amount) FROM payments p WHERE p.invoice_id=i.id AND p.method <> 'credit'),0) - COALESCE((SELECT SUM(amount) FROM refunds r WHERE r.invoice_id=i.id),0))`;
@@ -59,6 +66,8 @@ router.get('/receivables', async (req: Request, res: Response) => {
   if (status === 'unpaid') conditions.push(`${balance} > 0 AND (COALESCE((SELECT SUM(amount) FROM payments p WHERE p.invoice_id=i.id),0) = 0)`);
   if (status === 'partial') conditions.push(`${balance} > 0 AND COALESCE((SELECT SUM(amount) FROM payments p WHERE p.invoice_id=i.id),0) > 0`);
   if (status === 'paid') conditions.push(`${balance} <= 0`);
+  if (from) { conditions.push('date(i.issued_date) >= ?'); params.push(from); }
+  if (to) { conditions.push('date(i.issued_date) <= ?'); params.push(to); }
   const where = conditions.join(' AND ');
   const select = `SELECT i.id, i.invoice_number, i.issued_date, i.total, i.status, i.credit_account_name,
     COALESCE(NULLIF(i.credit_account_name,''), c.name, 'Unassigned Credit') AS account_name,
@@ -67,7 +76,9 @@ router.get('/receivables', async (req: Request, res: Response) => {
     FROM invoices i LEFT JOIN customers c ON c.id=i.customer_id WHERE ${where}`;
   const total = Number((await db.prepare(`SELECT COUNT(*) AS total FROM invoices i LEFT JOIN customers c ON c.id=i.customer_id WHERE ${where}`).get(...params) as any).total || 0);
   const summary = await db.prepare(`SELECT COUNT(*) AS credit_sales, SUM(CASE WHEN balance > 0.005 THEN balance ELSE 0 END) AS outstanding, SUM(CASE WHEN balance > 0.005 THEN 1 ELSE 0 END) AS open_accounts, SUM(CASE WHEN balance <= 0.005 THEN 1 ELSE 0 END) AS paid_sales FROM (${select}) receivables`).get(...params) as any;
-  const data = await db.prepare(`${select} ORDER BY CASE WHEN balance > 0.005 THEN 0 ELSE 1 END, balance DESC, i.issued_date ASC LIMIT ? OFFSET ?`).all(...params, pageSize, (page - 1) * pageSize);
+  const data = exportMode
+    ? await db.prepare(`${select} ORDER BY CASE WHEN balance > 0.005 THEN 0 ELSE 1 END, balance DESC, i.issued_date ASC`).all(...params)
+    : await db.prepare(`${select} ORDER BY CASE WHEN balance > 0.005 THEN 0 ELSE 1 END, balance DESC, i.issued_date ASC LIMIT ? OFFSET ?`).all(...params, pageSize, (page - 1) * pageSize);
   res.json({ data, total, page, pageSize, totalPages: Math.ceil(total / pageSize), summary: { credit_sales: Number(summary.credit_sales || 0), outstanding: Number(summary.outstanding || 0), open_accounts: Number(summary.open_accounts || 0), paid_sales: Number(summary.paid_sales || 0) } });
 });
 

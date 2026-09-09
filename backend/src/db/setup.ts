@@ -220,6 +220,17 @@ async function initTables() {
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
+    CREATE TABLE IF NOT EXISTS attendance_notes (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      attendance_date TEXT NOT NULL,
+      remarks TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE (user_id, attendance_date),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
     CREATE TABLE IF NOT EXISTS audit_log (
       id TEXT PRIMARY KEY,
       user_id TEXT,

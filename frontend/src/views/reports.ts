@@ -1,6 +1,7 @@
 import { apiGet } from '../lib/api';
 import { esc, fmtDate, fmtPeso, businessDate, businessMonth } from '../lib/helpers';
 import { showToast } from '../lib/helpers';
+import { showExportPeriodModal, exportTable, type ExportPeriod } from '../lib/export';
 
 let currentSubTab = 'daily';
 let currentReportPeriod = 'month';
@@ -18,6 +19,10 @@ function reportPeriodRange(period = currentReportPeriod): { from: string; to: st
     const sunday = new Date(monday); sunday.setUTCDate(monday.getUTCDate() + 6);
     return { from: monday.toISOString().slice(0, 10), to: sunday.toISOString().slice(0, 10) };
   }
+  if (period === 'quarter') {
+    const quarter = Math.floor((month - 1) / 3); const start = new Date(Date.UTC(year, quarter * 3, 1)); const end = new Date(Date.UTC(year, quarter * 3 + 3, 0));
+    return { from: start.toISOString().slice(0, 10), to: end.toISOString().slice(0, 10) };
+  }
   return { from: `${year}-${String(month).padStart(2, '0')}-01`, to: new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10) };
 }
 
@@ -30,13 +35,14 @@ function reportPeriodControl() {
   if (currentSubTab === 'daily') {
     return `<div class="report-period-bar daily-period-bar"><div><strong>Daily sales date</strong><span>Choose the day to review</span></div><input id="rpt-daily-date" type="date" value="${reportPeriodRange().to}" onchange="reloadDaily()" /></div>`;
   }
-  return `<div class="report-period-bar"><div><strong>Report period</strong><span id="report-period-range">${periodText()}</span></div><select id="report-period" onchange="applyReportPeriod(this.value)"><option value="week" ${currentReportPeriod === 'week' ? 'selected' : ''}>This week</option><option value="month" ${currentReportPeriod === 'month' ? 'selected' : ''}>This month</option><option value="year" ${currentReportPeriod === 'year' ? 'selected' : ''}>This year</option></select></div>`;
+  return `<div class="report-period-bar"><div><strong>Report period</strong><span id="report-period-range">${periodText()}</span></div><select id="report-period" onchange="applyReportPeriod(this.value)"><option value="week" ${currentReportPeriod === 'week' ? 'selected' : ''}>This week</option><option value="month" ${currentReportPeriod === 'month' ? 'selected' : ''}>This month</option><option value="quarter" ${currentReportPeriod === 'quarter' ? 'selected' : ''}>This quarter</option><option value="year" ${currentReportPeriod === 'year' ? 'selected' : ''}>This year</option></select></div>`;
 }
 
 export async function renderReports(): Promise<string> {
   return `
     <div class="page-header">
       <h2>Reports</h2>
+      <button class="btn" onclick="exportReports()">Export Report</button>
     </div>
     <div id="report-period-control">${reportPeriodControl()}</div>
     <div class="report-tabs" role="tablist" aria-label="Report types">
@@ -69,9 +75,22 @@ export async function switchReportTab(tab: string) {
 }
 
 export function applyReportPeriod(period: string) {
-  if (!['week', 'month', 'year'].includes(period)) return;
+  if (!['week', 'month', 'quarter', 'year'].includes(period)) return;
   currentReportPeriod = period;
   (window as any).loadView?.('reports');
+}
+
+export function exportReports() {
+  showExportPeriodModal('Reports', async (period: ExportPeriod, format) => {
+    if (currentSubTab === 'monthly') {
+      const data = await apiGet<any>(`/reports/range?type=profit&from=${period.from}&to=${period.to}`);
+      exportTable('Profit and Loss Report', period, ['Metric', 'Amount'], [['Revenue', fmtPeso(data.revenue)], ['COGS', fmtPeso(data.cogs)], ['Gross Profit', fmtPeso(data.gross_profit)], ['Expenses', fmtPeso(data.expenses)], ['Net Profit', fmtPeso(data.net_profit)]], format, `Period: ${period.label}`);
+      return;
+    }
+    const data = await apiGet<any>(`/reports/range?type=sales&from=${period.from}&to=${period.to}`);
+    const rows = (data.invoices || []).map((row: any) => [row.invoice_number, row.customer_name, fmtDate(row.issued_date), row.status, fmtPeso(row.total), fmtPeso(row.paid)]);
+    exportTable('Sales Report', period, ['Invoice', 'Buyer', 'Issued', 'Status', 'Total', 'Paid'], rows, format, `Gross sales: ${fmtPeso(data.totals?.gross_sales || 0)} · Profit: ${fmtPeso(data.totals?.profit || 0)} · ${rows.length} invoice${rows.length === 1 ? '' : 's'}`);
+  });
 }
 
 async function loadFinancialSummary(from?: string, to?: string) {

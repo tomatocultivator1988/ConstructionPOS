@@ -572,6 +572,7 @@ tr.low-stock:hover { background: rgba(245, 158, 11, 0.2); }
 .attendance-day { min-height:84px; padding:10px; border:1px solid var(--c-border); border-radius:var(--radius-md); background:var(--c-surface); display:flex; flex-direction:column; gap:7px; }
 .attendance-day strong { color:var(--c-text); }
 .attendance-day span { font-size:var(--fs-xs); color:var(--c-text-muted); }
+.attendance-day small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-text-secondary); font-size:var(--fs-xs); }
 .attendance-empty { visibility:hidden; }
 .attendance-present { border-color:var(--c-success); background:var(--c-success-bg); }
 .attendance-absent { border-color:var(--c-danger); background:var(--c-danger-bg); }

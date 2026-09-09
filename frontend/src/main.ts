@@ -14,6 +14,7 @@ import * as receipts from './views/receipts';
 import * as productMix from './views/product-mix';
 import * as receivables from './views/receivables';
 import { openHelp } from './lib/help';
+import { submitExportPeriod, toggleExportCustomRange } from './lib/export';
 
 Object.assign(window, {
   loadView,
@@ -38,6 +39,7 @@ Object.assign(window, {
   drawReceivablesTrend: receivables.drawReceivablesTrend,
   showReceivableNameModal: receivables.showReceivableNameModal,
   saveReceivableName: receivables.saveReceivableName,
+  exportReceivables: receivables.exportReceivables,
   toggleMobileDetails: materials.toggleMobileDetails,
   showInvoiceDetail: invoices.showInvoiceDetail,
   recordPayment: invoices.recordPayment,
@@ -54,6 +56,7 @@ Object.assign(window, {
   togglePOSCart: invoices.togglePOSCart,
   updatePOSPayment: invoices.updatePOSPayment,
   completePOSSale: invoices.completePOSSale,
+  exportSalesHistory: invoices.exportSalesHistory,
   enhancePOS: invoices.enhancePOS,
   startPOSCameraScan: invoices.startPOSCameraScan,
   stopPOSCameraScan: invoices.stopPOSCameraScan,
@@ -71,6 +74,7 @@ Object.assign(window, {
   changeReceiptPage: receipts.changeReceiptPage,
   viewReceipt: receipts.viewReceipt,
   showExpenseModal: expenses.showExpenseModal,
+  exportExpenses: expenses.exportExpenses,
   createExpense: expenses.createExpense,
   updateExpense: expenses.updateExpense,
   editExpense: expenses.editExpense,
@@ -78,6 +82,7 @@ Object.assign(window, {
   addExpenseCategory: expenses.addExpenseCategory,
   saveExpenseCategory: expenses.saveExpenseCategory,
   showSupplierModal: suppliers.showSupplierModal,
+  exportSuppliers: suppliers.exportSuppliers,
   createSupplier: suppliers.createSupplier,
   updateSupplier: suppliers.updateSupplier,
   editSupplier: suppliers.editSupplier,
@@ -99,12 +104,15 @@ Object.assign(window, {
   loadRangeReport: reports.loadRangeReport,
   printReport: reports.printReport,
   applyReportPeriod: reports.applyReportPeriod,
+  exportReports: reports.exportReports,
   reloadBooks: reports.reloadBooks,
   reloadFinancialSummary: reports.reloadFinancialSummary,
   switchSettingsTab: settings.switchSettingsTab,
   selectAttendanceStaff: settings.selectAttendanceStaff,
   changeAttendanceMonth: settings.changeAttendanceMonth,
   setAttendanceStatus: settings.setAttendanceStatus,
+  showAttendanceRemarkModal: settings.showAttendanceRemarkModal,
+  saveAttendanceRemark: settings.saveAttendanceRemark,
   saveSettings: settings.saveSettings,
   updateShiftVariance: settings.updateShiftVariance,
   showShiftPreview: settings.showShiftPreview,
@@ -125,6 +133,8 @@ Object.assign(window, {
   checkLowStock: () => checkLowStock(),
   openMobileMore,
   openHelp,
+  submitExportPeriod,
+  toggleExportCustomRange,
 });
 
 // Keep the primary navigation in the same workflow order on desktop.
