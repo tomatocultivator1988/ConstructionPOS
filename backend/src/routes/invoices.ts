@@ -30,6 +30,7 @@ router.get('/', async (req: Request, res: Response) => {
   const conditions: string[] = []; const params: any[] = [];
   if (typeof req.query.from === 'string' && req.query.from) { conditions.push('date(i.issued_date) >= ?'); params.push(req.query.from); }
   if (typeof req.query.to === 'string' && req.query.to) { conditions.push('date(i.issued_date) <= ?'); params.push(req.query.to); }
+  const where = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : '';
   const baseQuery = `
     SELECT i.*, COALESCE(NULLIF(i.credit_account_name,''), c.name, 'Walk-in') AS customer_name, c.address AS customer_address, c.tin AS customer_tin,
       i.total - COALESCE((SELECT SUM(amount) FROM credit_memos cm WHERE cm.invoice_id=i.id AND cm.status='issued'),0) - COALESCE((SELECT SUM(total_credit) FROM invoice_returns ir WHERE ir.invoice_id=i.id),0) AS adjusted_total,
@@ -37,12 +38,12 @@ router.get('/', async (req: Request, res: Response) => {
       COALESCE((SELECT SUM(amount) FROM payments p WHERE p.invoice_id=i.id),0) - COALESCE((SELECT SUM(amount) FROM refunds r WHERE r.invoice_id=i.id),0) AS net_paid
     FROM invoices i
     LEFT JOIN customers c ON c.id = i.customer_id
-    WHERE ${conditions.join(' AND ')}
+    ${where}
     ORDER BY i.created_at DESC`;
   if (req.query.page !== undefined) {
     const page = Math.max(1, Number(req.query.page) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || 15));
-    const total = Number((await db.prepare(`SELECT COUNT(*) total FROM invoices i WHERE ${conditions.join(' AND ')}`).get(...params) as any).total);
+    const total = Number((await db.prepare(`SELECT COUNT(*) total FROM invoices i${where}`).get(...params) as any).total);
     const data = req.query.export === '1' ? await db.prepare(baseQuery).all(...params) : await db.prepare(`${baseQuery} LIMIT ? OFFSET ?`).all(...params, pageSize, (page - 1) * pageSize);
     res.json({ data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
     return;

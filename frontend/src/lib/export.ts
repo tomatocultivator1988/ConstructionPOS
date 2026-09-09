@@ -55,7 +55,7 @@ export function exportTable(title: string, period: ExportPeriod, headers: string
   if (format === 'csv') {
     const csv = [headers, ...rows].map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a');
-    a.href = url; a.download = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${period.from}-to-${period.to}.csv`; a.click(); URL.revokeObjectURL(url); return;
+    a.href = url; a.download = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${period.from}-to-${period.to}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); return;
   }
   const win = window.open('', '_blank');
   if (!win) { showToast('Allow pop-ups to create the PDF/print preview'); return; }
